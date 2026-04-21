@@ -1,19 +1,24 @@
 using UnityEngine;
+using BladeFrenzy.Gameplay.Core;
 
 namespace BladeFrenzy.Gameplay.Spawning
 {
     [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(FruitData))]
     public class SpawnedObject : MonoBehaviour
     {
         [SerializeField] private float missedYThreshold = 42f;
+        [SerializeField] private SpawnedObject sourcePrefab;
 
         private SpawnManager _owner;
         private Rigidbody _rigidbody;
+        private FruitData _fruitData;
         private bool _isActive;
 
         private void Awake()
         {
             _rigidbody = GetComponent<Rigidbody>();
+            _fruitData = GetComponent<FruitData>();
         }
 
         private void Update()
@@ -22,7 +27,7 @@ namespace BladeFrenzy.Gameplay.Spawning
                 return;
 
             if (transform.position.y < missedYThreshold)
-                ReturnToPool();
+                ReturnToPool(true);
         }
 
         public void Launch(
@@ -44,12 +49,39 @@ namespace BladeFrenzy.Gameplay.Spawning
             _rigidbody.angularVelocity = angularVelocity;
         }
 
-        public void ReturnToPool()
+        public void HandleSuccessfulSlice()
         {
-            TryReturnToPool();
+            if (!_isActive || _fruitData == null)
+                return;
+
+            if (_fruitData.IsBomb)
+                GameEvents.RaiseBombHit(_fruitData, transform.position);
+            else
+                GameEvents.RaiseFruitSliced(_fruitData, transform.position);
+
+            ReturnToPool(false);
         }
 
-        public bool TryReturnToPool()
+        public void HandleBombHit()
+        {
+            if (!_isActive)
+                return;
+
+            GameEvents.RaiseBombHit(_fruitData, transform.position);
+            ReturnToPool(false);
+        }
+
+        public void SetSourcePrefab(SpawnedObject prefab)
+        {
+            sourcePrefab = prefab;
+        }
+
+        public SpawnedObject GetSourcePrefab()
+        {
+            return sourcePrefab;
+        }
+
+        public void ReturnToPool()
         {
             if (!_isActive)
                 return false;
@@ -57,6 +89,9 @@ namespace BladeFrenzy.Gameplay.Spawning
             _isActive = false;
             _rigidbody.linearVelocity = Vector3.zero;
             _rigidbody.angularVelocity = Vector3.zero;
+
+            if (reportMiss && _fruitData != null && !_fruitData.IsBomb)
+                GameEvents.RaiseFruitMissed(_fruitData, transform.position);
 
             if (_owner != null)
                 _owner.Release(this);
