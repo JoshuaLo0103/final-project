@@ -10,6 +10,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         [Header("References")]
         [SerializeField] private Transform targetPoint;
         [SerializeField] private Transform[] spawnPoints;
+        [SerializeField] private SpawnedObject[] fruitPrefabs;
         [SerializeField] private SpawnedObject bombPrefab;
 
         [Header("Timing")]
