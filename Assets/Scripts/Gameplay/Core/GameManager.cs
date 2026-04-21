@@ -1,5 +1,6 @@
 using BladeFrenzy.Gameplay.Spawning;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 namespace BladeFrenzy.Gameplay.Core
@@ -50,10 +51,10 @@ namespace BladeFrenzy.Gameplay.Core
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.R))
+            if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
                 RestartRun();
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
                 QuitGame();
 
             if (!IsRunActive)

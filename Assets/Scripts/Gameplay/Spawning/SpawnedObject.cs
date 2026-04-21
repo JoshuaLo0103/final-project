@@ -80,7 +80,6 @@ namespace BladeFrenzy.Gameplay.Spawning
         {
             return sourcePrefab;
         }
-        }
 
         public void ReturnToPool()
         {
