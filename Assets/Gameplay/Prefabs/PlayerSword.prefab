@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 1034907501665594205}
   - component: {fileID: 1725205139986374309}
   - component: {fileID: 5111852028975208726}
+  - component: {fileID: 7697919470778374880}
   m_Layer: 0
   m_Name: PlayerSword
   m_TagString: Untagged
@@ -273,6 +274,21 @@ MonoBehaviour:
   m_LimitAngularVelocity: 0
   m_MaxLinearVelocityDelta: 10
   m_MaxAngularVelocityDelta: 20
+--- !u!114 &7697919470778374880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2100322649968495225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 176191090b1a8534baa84f493d5069f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Scoring.SwordHitScorer
+  scoreManager: {fileID: 0}
+  defaultFruitPoints: 1
+  defaultBombPenalty: 1
 --- !u!1 &3874708408050069295
 GameObject:
   m_ObjectHideFlags: 0

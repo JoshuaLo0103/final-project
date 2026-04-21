@@ -46,8 +46,13 @@ namespace BladeFrenzy.Gameplay.Spawning
 
         public void ReturnToPool()
         {
+            TryReturnToPool();
+        }
+
+        public bool TryReturnToPool()
+        {
             if (!_isActive)
-                return;
+                return false;
 
             _isActive = false;
             _rigidbody.linearVelocity = Vector3.zero;
@@ -57,6 +62,8 @@ namespace BladeFrenzy.Gameplay.Spawning
                 _owner.Release(this);
             else
                 gameObject.SetActive(false);
+
+            return true;
         }
     }
 }
