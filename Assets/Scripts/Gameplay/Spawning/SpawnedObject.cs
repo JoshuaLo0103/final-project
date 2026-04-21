@@ -8,6 +8,7 @@ namespace BladeFrenzy.Gameplay.Spawning
     public class SpawnedObject : MonoBehaviour
     {
         [SerializeField] private float missedYThreshold = 42f;
+        [SerializeField] private SpawnedObject sourcePrefab;
 
         private SpawnManager _owner;
         private Rigidbody _rigidbody;
@@ -68,6 +69,17 @@ namespace BladeFrenzy.Gameplay.Spawning
 
             GameEvents.RaiseBombHit(_fruitData, transform.position);
             ReturnToPool(false);
+        }
+
+        public void SetSourcePrefab(SpawnedObject prefab)
+        {
+            sourcePrefab = prefab;
+        }
+
+        public SpawnedObject GetSourcePrefab()
+        {
+            return sourcePrefab;
+        }
         }
 
         public void ReturnToPool()

@@ -10,7 +10,6 @@ namespace BladeFrenzy.Gameplay.Spawning
         [Header("References")]
         [SerializeField] private Transform targetPoint;
         [SerializeField] private Transform[] spawnPoints;
-        [SerializeField] private SpawnedObject fruitPrefab;
         [SerializeField] private SpawnedObject bombPrefab;
 
         [Header("Timing")]
@@ -72,6 +71,29 @@ namespace BladeFrenzy.Gameplay.Spawning
             launchSpeed = Mathf.Max(1f, _baseLaunchSpeed * Mathf.Max(0.1f, multiplier));
         }
 
+        public void SetActiveSpawnPoints(Transform[] points)
+        {
+            spawnPoints = points;
+        }
+
+        public void SetActiveSpawnPointCount(int count)
+        {
+            if (spawnPoints == null || spawnPoints.Length == 0)
+                return;
+
+            int clampedCount = Mathf.Clamp(count, 1, spawnPoints.Length);
+            Transform[] activePoints = new Transform[clampedCount];
+            for (int index = 0; index < clampedCount; index++)
+                activePoints[index] = spawnPoints[index];
+
+            spawnPoints = activePoints;
+        }
+
+        public void SetFruitPrefabs(SpawnedObject[] prefabs)
+        {
+            fruitPrefabs = prefabs;
+        }
+
         public void Release(SpawnedObject spawnedObject)
         {
             if (spawnedObject == null)
@@ -110,7 +132,7 @@ namespace BladeFrenzy.Gameplay.Spawning
 
             bool allowBomb = Time.time - _runStartTime >= initialBombGracePeriod;
             bool spawnBomb = allowBomb && bombPrefab != null && Random.value < bombChance;
-            SpawnedObject prefab = spawnBomb ? bombPrefab : fruitPrefab;
+            SpawnedObject prefab = spawnBomb ? bombPrefab : GetRandomFruitPrefab();
             if (prefab == null)
                 return;
 
@@ -146,6 +168,7 @@ namespace BladeFrenzy.Gameplay.Spawning
             }
 
             SpawnedObject created = Instantiate(prefab, transform);
+            created.SetSourcePrefab(prefab);
             created.gameObject.SetActive(false);
             return created;
         }
@@ -156,7 +179,29 @@ namespace BladeFrenzy.Gameplay.Spawning
             if (data != null && data.IsBomb)
                 return bombPrefab;
 
-            return fruitPrefab;
+            SpawnedObject sourcePrefab = spawnedObject.GetSourcePrefab();
+            if (sourcePrefab != null)
+                return sourcePrefab;
+
+            return GetRandomFruitPrefab();
+        }
+
+        private SpawnedObject GetRandomFruitPrefab()
+        {
+            if (fruitPrefabs == null || fruitPrefabs.Length == 0)
+                return null;
+
+            List<SpawnedObject> availablePrefabs = new List<SpawnedObject>();
+            foreach (SpawnedObject prefab in fruitPrefabs)
+            {
+                if (prefab != null)
+                    availablePrefabs.Add(prefab);
+            }
+
+            if (availablePrefabs.Count == 0)
+                return null;
+
+            return availablePrefabs[Random.Range(0, availablePrefabs.Count)];
         }
 
         private void OnDrawGizmosSelected()
