@@ -27,7 +27,7 @@ namespace BladeFrenzy.Gameplay.Spawning
                 return;
 
             if (transform.position.y < missedYThreshold)
-                ReturnToPool(true);
+                TryReturnToPool(true);
         }
 
         public void Launch(
@@ -59,7 +59,7 @@ namespace BladeFrenzy.Gameplay.Spawning
             else
                 GameEvents.RaiseFruitSliced(_fruitData, transform.position);
 
-            ReturnToPool(false);
+            TryReturnToPool(false);
         }
 
         public void HandleBombHit()
@@ -68,7 +68,7 @@ namespace BladeFrenzy.Gameplay.Spawning
                 return;
 
             GameEvents.RaiseBombHit(_fruitData, transform.position);
-            ReturnToPool(false);
+            TryReturnToPool(false);
         }
 
         public void SetSourcePrefab(SpawnedObject prefab)
@@ -82,6 +82,16 @@ namespace BladeFrenzy.Gameplay.Spawning
         }
 
         public void ReturnToPool()
+        {
+            TryReturnToPool(true);
+        }
+
+        public bool TryReturnToPool()
+        {
+            return TryReturnToPool(true);
+        }
+
+        public bool TryReturnToPool(bool reportMiss)
         {
             if (!_isActive)
                 return false;
