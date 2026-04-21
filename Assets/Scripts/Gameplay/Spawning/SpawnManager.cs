@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using BladeFrenzy.Gameplay.Core;
 using UnityEngine;
 
 namespace BladeFrenzy.Gameplay.Spawning
@@ -36,7 +37,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         {
             _baseLaunchSpeed = launchSpeed;
 
-            if (spawnOnStart)
+            if (spawnOnStart && FindFirstObjectByType<GameManager>() == null)
                 BeginRun();
         }
 
