@@ -13,6 +13,8 @@ namespace BladeFrenzy.Gameplay.Core
         public static event Action<FruitMissedEventArgs> OnFruitMissed;
         public static event Action<ComboTierChangedEventArgs> OnComboTierChanged;
         public static event Action<HighScoreBeatenEventArgs> OnHighScoreBeaten;
+        public static event Action<LivesChangedEventArgs> OnLivesChanged;
+        public static event Action OnLivesDepleted;
 
         public static void RaiseRunStarted()
         {
@@ -53,6 +55,16 @@ namespace BladeFrenzy.Gameplay.Core
         public static void RaiseHighScoreBeaten(int newHighScore)
         {
             OnHighScoreBeaten?.Invoke(new HighScoreBeatenEventArgs(newHighScore));
+        }
+
+        public static void RaiseLivesChanged(int currentLives, int maxLives)
+        {
+            OnLivesChanged?.Invoke(new LivesChangedEventArgs(currentLives, maxLives));
+        }
+
+        public static void RaiseLivesDepleted()
+        {
+            OnLivesDepleted?.Invoke();
         }
     }
 
@@ -112,6 +124,18 @@ namespace BladeFrenzy.Gameplay.Core
         }
 
         public int NewHighScore { get; }
+    }
+
+    public readonly struct LivesChangedEventArgs
+    {
+        public LivesChangedEventArgs(int currentLives, int maxLives)
+        {
+            CurrentLives = currentLives;
+            MaxLives = maxLives;
+        }
+
+        public int CurrentLives { get; }
+        public int MaxLives { get; }
     }
 
     public readonly struct GameRunEndedEventArgs

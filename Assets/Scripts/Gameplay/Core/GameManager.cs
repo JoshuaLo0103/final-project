@@ -33,13 +33,13 @@ namespace BladeFrenzy.Gameplay.Core
 
         private void OnEnable()
         {
-            GameEvents.OnBombHit += HandleBombHit;
+            GameEvents.OnLivesDepleted += HandleLivesDepleted;
             SceneManager.sceneLoaded += HandleSceneLoaded;
         }
 
         private void OnDisable()
         {
-            GameEvents.OnBombHit -= HandleBombHit;
+            GameEvents.OnLivesDepleted -= HandleLivesDepleted;
             SceneManager.sceneLoaded -= HandleSceneLoaded;
         }
 
@@ -109,9 +109,9 @@ namespace BladeFrenzy.Gameplay.Core
                 reason));
         }
 
-        private void HandleBombHit(BombHitEventArgs _)
+        private void HandleLivesDepleted()
         {
-            EndRun("Bomb Hit");
+            EndRun("Out of Lives");
         }
 
         private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)

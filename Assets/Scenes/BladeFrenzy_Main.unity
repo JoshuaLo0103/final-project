@@ -1627,7 +1627,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6150119462990368156, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2048910488}
   m_SourcePrefab: {fileID: 100100000, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
 --- !u!1001 &210950415
 PrefabInstance:
@@ -19770,6 +19773,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5744547297954377431, guid: c07631e61b8f6754685de3cc0f3ff7ef, type: 3}
   m_PrefabInstance: {fileID: 1238176991}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1240069940 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6150119462990368156, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+  m_PrefabInstance: {fileID: 177719569}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1241204762
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -26845,6 +26853,20 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2240559373026964245, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
   m_PrefabInstance: {fileID: 177719569}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2048910488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1240069940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d72642c8cfdbf014bad1e26b971a54a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Core.LivesManager
+  maxLives: 3
+  startingLives: 3
 --- !u!4 &2049307254 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6899781153407400490, guid: 9753f860076a70942b7417f548ddde2a, type: 3}
