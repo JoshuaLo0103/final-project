@@ -3,53 +3,83 @@ using UnityEngine;
 
 namespace BladeFrenzy.Gameplay.Scoring
 {
+    [RequireComponent(typeof(Rigidbody))]
     public class SwordHitScorer : MonoBehaviour
     {
-        [SerializeField] private ScoreManager scoreManager;
-        [SerializeField] private int defaultFruitPoints = 1;
-        [SerializeField] private int defaultBombPenalty = 1;
+        [Header("Slice Detection")]
+        [SerializeField] private float minimumSliceSpeed = 2.75f;
+        [SerializeField] private Vector3 localBladeAxis = Vector3.forward;
+        [SerializeField] private float minimumPlaneNormalMagnitude = 0.2f;
+
+        private Rigidbody _rigidbody;
+        private Vector3 _previousPosition;
+        private Vector3 _currentVelocity;
+        private bool _hasPreviousPosition;
 
         private void Awake()
         {
-            if (scoreManager == null)
-                scoreManager = FindFirstObjectByType<ScoreManager>();
+            _rigidbody = GetComponent<Rigidbody>();
+            _previousPosition = transform.position;
+            _hasPreviousPosition = true;
+        }
+
+        private void FixedUpdate()
+        {
+            Vector3 currentPosition = transform.position;
+            if (_hasPreviousPosition)
+                _currentVelocity = (currentPosition - _previousPosition) / Mathf.Max(Time.fixedDeltaTime, 0.0001f);
+
+            _previousPosition = currentPosition;
+            _hasPreviousPosition = true;
         }
 
         private void OnCollisionEnter(Collision collision)
         {
-            TryScoreHit(collision.collider);
+            if (collision == null || collision.collider == null)
+                return;
+
+            Vector3 contactPoint = collision.contactCount > 0
+                ? collision.GetContact(0).point
+                : collision.collider.ClosestPoint(transform.position);
+
+            TrySliceHit(collision.collider, contactPoint);
         }
 
         private void OnTriggerEnter(Collider other)
         {
-            TryScoreHit(other);
+            if (other == null)
+                return;
+
+            TrySliceHit(other, other.ClosestPoint(transform.position));
         }
 
-        private void TryScoreHit(Collider other)
+        private void TrySliceHit(Collider other, Vector3 hitPoint)
         {
             if (other == null)
                 return;
 
             SpawnedObject spawnedObject = ResolveComponent<SpawnedObject>(other);
-            FruitData fruitData = ResolveComponent<FruitData>(other);
-            if (spawnedObject == null || fruitData == null)
+            if (spawnedObject == null)
                 return;
 
-            int scoreDelta = ResolveScoreDelta(fruitData);
-            if (!spawnedObject.TryReturnToPool())
+            Vector3 bladeVelocity = ResolveBladeVelocity();
+            if (bladeVelocity.magnitude < minimumSliceSpeed)
                 return;
 
-            if (scoreManager != null)
-                scoreManager.AddScore(scoreDelta);
+            Vector3 bladeDirection = transform.TransformDirection(localBladeAxis).normalized;
+            Vector3 slicePlaneNormal = Vector3.Cross(bladeVelocity.normalized, bladeDirection);
+            if (slicePlaneNormal.sqrMagnitude < minimumPlaneNormalMagnitude * minimumPlaneNormalMagnitude)
+                return;
+
+            spawnedObject.TrySlice(hitPoint, slicePlaneNormal.normalized, bladeVelocity.normalized);
         }
 
-        private int ResolveScoreDelta(FruitData fruitData)
+        private Vector3 ResolveBladeVelocity()
         {
-            int pointValue = Mathf.Max(1, fruitData.PointValue);
-            if (fruitData.IsBomb)
-                return -Mathf.Max(defaultBombPenalty, pointValue);
+            if (_rigidbody != null && _rigidbody.linearVelocity.sqrMagnitude > _currentVelocity.sqrMagnitude)
+                return _rigidbody.linearVelocity;
 
-            return Mathf.Max(defaultFruitPoints, pointValue);
+            return _currentVelocity;
         }
 
         private static T ResolveComponent<T>(Collider other) where T : Component

@@ -15,6 +15,8 @@ namespace BladeFrenzy.Gameplay.Core
             runtimeRoot.AddComponent<DifficultyManager>();
             runtimeRoot.AddComponent<GameManager>();
             runtimeRoot.AddComponent<ScoreboardUI>();
+            runtimeRoot.AddComponent<SliceParticleBurst>();
+            runtimeRoot.AddComponent<SliceSoundEffect>();
         }
     }
 }
