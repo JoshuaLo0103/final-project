@@ -10,9 +10,9 @@ namespace BladeFrenzy.Gameplay.Core
 
         [Header("Spatial Audio")]
         [SerializeField] private float volume = 0.95f;
-        [SerializeField] private float spatialBlend = 1f;
-        [SerializeField] private float minDistance = 0.35f;
-        [SerializeField] private float maxDistance = 18f;
+        [SerializeField] private float spatialBlend = 0f;
+        [SerializeField] private float minDistance = 1f;
+        [SerializeField] private float maxDistance = 1f;
         [SerializeField] private float spread = 35f;
         [SerializeField] private AudioRolloffMode rolloffMode = AudioRolloffMode.Linear;
 
