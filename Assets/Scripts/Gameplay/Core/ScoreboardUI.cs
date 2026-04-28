@@ -131,7 +131,7 @@ namespace BladeFrenzy.Gameplay.Core
             scoreboardCanvas.transform.localScale = canvasScale;
 
             RectTransform canvasRect = canvasObject.GetComponent<RectTransform>();
-            canvasRect.sizeDelta = new Vector2(920f, 420f);
+            canvasRect.sizeDelta = new Vector2(920f, 540f);
 
             Image panel = CreatePanel("Panel", canvasObject.transform, new Color(0.03f, 0.05f, 0.08f, 0.78f));
             RectTransform panelRect = (RectTransform)panel.transform;
@@ -148,9 +148,22 @@ namespace BladeFrenzy.Gameplay.Core
             CreateMetricCard("MultiplierCard", panel.transform, new Vector2(235f, 86f), new Vector2(210f, -152f), "MULTIPLIER", out multiplierText, new Color(1f, 0.5f, 0.25f));
 
             CreateMetricCard("HighScoreCard", panel.transform, new Vector2(235f, 86f), new Vector2(-210f, -258f), "HIGH SCORE", out highScoreText, new Color(0.76f, 0.98f, 0.86f));
-            CreateMetricCard("LivesCard", panel.transform, new Vector2(235f, 86f), new Vector2(0f, -258f), "LIVES", out livesText, new Color(1f, 0.45f, 0.45f));
-            CreateMetricCard("TimerCard", panel.transform, new Vector2(235f, 86f), new Vector2(210f, -258f), "TIME", out timerText, new Color(0.8f, 0.91f, 1f));
-            CreateMetricCard("DifficultyCard", panel.transform, new Vector2(235f, 86f), new Vector2(0f, -364f), "DIFFICULTY", out difficultyText, new Color(1f, 0.67f, 0.34f));
+            CreateMetricCard("TimerCard", panel.transform, new Vector2(235f, 86f), new Vector2(0f, -258f), "TIME", out timerText, new Color(0.8f, 0.91f, 1f));
+            CreateMetricCard("DifficultyCard", panel.transform, new Vector2(235f, 86f), new Vector2(210f, -258f), "DIFFICULTY", out difficultyText, new Color(1f, 0.67f, 0.34f));
+
+            CreateText(
+                "LivesText",
+                panel.transform,
+                string.Empty,
+                48,
+                FontStyles.Bold,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -372f),
+                new Vector2(820f, 64f),
+                out livesText,
+                new Color(1f, 0.45f, 0.45f));
 
             BuildGameOverPanel(panel.transform);
             ApplySerializedReferences();
@@ -165,17 +178,21 @@ namespace BladeFrenzy.Gameplay.Core
             if (panel == null)
                 panel = scoreboardCanvas.transform;
 
+            RectTransform canvasRect = scoreboardCanvas.GetComponent<RectTransform>();
+            if (canvasRect != null && canvasRect.sizeDelta.y < 540f)
+                canvasRect.sizeDelta = new Vector2(canvasRect.sizeDelta.x, 540f);
+
             CreateText(
                 "LivesText",
                 panel,
                 string.Empty,
-                26,
+                48,
                 FontStyles.Bold,
-                TextAlignmentOptions.MidlineLeft,
-                new Vector2(0f, 1f),
-                new Vector2(0f, 1f),
-                new Vector2(96f, -68f),
-                new Vector2(210f, 36f),
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -372f),
+                new Vector2(820f, 64f),
                 out livesText,
                 new Color(1f, 0.45f, 0.45f));
         }
@@ -216,7 +233,7 @@ namespace BladeFrenzy.Gameplay.Core
             if (highScoreText != null)
                 highScoreText.text = _scoreManager.HighScore.ToString();
             if (livesText != null && _livesManager != null)
-                livesText.text = BuildLivesString(_livesManager.CurrentLives, _livesManager.MaxLives);
+                livesText.text = $"Lives  {BuildLivesString(_livesManager.CurrentLives, _livesManager.MaxLives)}";
             if (timerText != null)
                 timerText.text = Mathf.CeilToInt(_gameManager.RemainingTime).ToString();
             if (difficultyText != null)
@@ -272,7 +289,7 @@ namespace BladeFrenzy.Gameplay.Core
         private void HandleLivesChanged(LivesChangedEventArgs eventArgs)
         {
             if (livesText != null)
-                livesText.text = BuildLivesString(eventArgs.CurrentLives, eventArgs.MaxLives);
+                livesText.text = $"Lives  {BuildLivesString(eventArgs.CurrentLives, eventArgs.MaxLives)}";
 
             if (eventArgs.CurrentLives > 0)
                 SetStatus($"{eventArgs.CurrentLives} lives remaining.", 1.1f);
