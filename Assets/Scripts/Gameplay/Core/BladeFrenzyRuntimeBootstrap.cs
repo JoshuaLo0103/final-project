@@ -7,16 +7,35 @@ namespace BladeFrenzy.Gameplay.Core
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void CreateRuntimeSystems()
         {
-            if (Object.FindFirstObjectByType<GameManager>() != null)
-                return;
+            GameObject runtimeRoot = ResolveRuntimeRoot();
+            EnsureComponent<ScoreManager>(runtimeRoot);
+            EnsureComponent<DifficultyManager>(runtimeRoot);
+            EnsureComponent<GameManager>(runtimeRoot);
+            EnsureComponent<ScoreboardUI>(runtimeRoot);
+            EnsureComponent<SliceParticleBurst>(runtimeRoot);
+            EnsureComponent<SliceSoundEffect>(runtimeRoot);
+            EnsureComponent<SwordAutoEquip>(runtimeRoot);
+        }
 
-            GameObject runtimeRoot = new("BladeFrenzyRuntime");
-            runtimeRoot.AddComponent<ScoreManager>();
-            runtimeRoot.AddComponent<DifficultyManager>();
-            runtimeRoot.AddComponent<GameManager>();
-            runtimeRoot.AddComponent<ScoreboardUI>();
-            runtimeRoot.AddComponent<SliceParticleBurst>();
-            runtimeRoot.AddComponent<SliceSoundEffect>();
+        private static GameObject ResolveRuntimeRoot()
+        {
+            GameManager existingGameManager = Object.FindFirstObjectByType<GameManager>();
+            if (existingGameManager != null)
+                return existingGameManager.gameObject;
+
+            GameObject existingRuntimeRoot = GameObject.Find("BladeFrenzyRuntime");
+            if (existingRuntimeRoot != null)
+                return existingRuntimeRoot;
+
+            return new GameObject("BladeFrenzyRuntime");
+        }
+
+        private static T EnsureComponent<T>(GameObject target) where T : Component
+        {
+            if (target.TryGetComponent(out T existingComponent))
+                return existingComponent;
+
+            return target.AddComponent<T>();
         }
     }
 }
