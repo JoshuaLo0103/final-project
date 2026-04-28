@@ -13,6 +13,7 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private TMP_Text comboText;
         [SerializeField] private TMP_Text multiplierText;
         [SerializeField] private TMP_Text highScoreText;
+        [SerializeField] private TMP_Text livesText;
         [SerializeField] private TMP_Text timerText;
         [SerializeField] private TMP_Text difficultyText;
         [SerializeField] private GameObject gameOverPanel;
@@ -33,6 +34,7 @@ namespace BladeFrenzy.Gameplay.Core
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
         private DifficultyManager _difficultyManager;
+        private LivesManager _livesManager;
 
         private Transform _viewer;
         private float _statusMessageTimer;
@@ -45,11 +47,14 @@ namespace BladeFrenzy.Gameplay.Core
             _gameManager = GetComponent<GameManager>();
             _scoreManager = GetComponent<ScoreManager>();
             _difficultyManager = GetComponent<DifficultyManager>();
+            _livesManager = GetComponent<LivesManager>();
 
             ApplySerializedReferences();
 
             if (scoreboardCanvas == null && buildRuntimeHudIfMissing)
                 BuildRuntimeHud();
+            else
+                EnsureLivesDisplay();
 
             FindViewer();
             if (placeFromViewerOnStart)
@@ -65,6 +70,7 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnComboTierChanged += HandleComboTierChanged;
             GameEvents.OnHighScoreBeaten += HandleHighScoreBeaten;
             GameEvents.OnFruitMissed += HandleFruitMissed;
+            GameEvents.OnLivesChanged += HandleLivesChanged;
         }
 
         private void OnDisable()
@@ -74,6 +80,7 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnComboTierChanged -= HandleComboTierChanged;
             GameEvents.OnHighScoreBeaten -= HandleHighScoreBeaten;
             GameEvents.OnFruitMissed -= HandleFruitMissed;
+            GameEvents.OnLivesChanged -= HandleLivesChanged;
         }
 
         private void LateUpdate()
@@ -141,11 +148,36 @@ namespace BladeFrenzy.Gameplay.Core
             CreateMetricCard("MultiplierCard", panel.transform, new Vector2(235f, 86f), new Vector2(210f, -152f), "MULTIPLIER", out multiplierText, new Color(1f, 0.5f, 0.25f));
 
             CreateMetricCard("HighScoreCard", panel.transform, new Vector2(235f, 86f), new Vector2(-210f, -258f), "HIGH SCORE", out highScoreText, new Color(0.76f, 0.98f, 0.86f));
-            CreateMetricCard("TimerCard", panel.transform, new Vector2(235f, 86f), new Vector2(0f, -258f), "TIME", out timerText, new Color(0.8f, 0.91f, 1f));
-            CreateMetricCard("DifficultyCard", panel.transform, new Vector2(235f, 86f), new Vector2(210f, -258f), "DIFFICULTY", out difficultyText, new Color(1f, 0.67f, 0.34f));
+            CreateMetricCard("LivesCard", panel.transform, new Vector2(235f, 86f), new Vector2(0f, -258f), "LIVES", out livesText, new Color(1f, 0.45f, 0.45f));
+            CreateMetricCard("TimerCard", panel.transform, new Vector2(235f, 86f), new Vector2(210f, -258f), "TIME", out timerText, new Color(0.8f, 0.91f, 1f));
+            CreateMetricCard("DifficultyCard", panel.transform, new Vector2(235f, 86f), new Vector2(0f, -364f), "DIFFICULTY", out difficultyText, new Color(1f, 0.67f, 0.34f));
 
             BuildGameOverPanel(panel.transform);
             ApplySerializedReferences();
+        }
+
+        private void EnsureLivesDisplay()
+        {
+            if (livesText != null || scoreboardCanvas == null)
+                return;
+
+            Transform panel = scoreboardCanvas.transform.Find("Panel");
+            if (panel == null)
+                panel = scoreboardCanvas.transform;
+
+            CreateText(
+                "LivesText",
+                panel,
+                string.Empty,
+                26,
+                FontStyles.Bold,
+                TextAlignmentOptions.MidlineLeft,
+                new Vector2(0f, 1f),
+                new Vector2(0f, 1f),
+                new Vector2(96f, -68f),
+                new Vector2(210f, 36f),
+                out livesText,
+                new Color(1f, 0.45f, 0.45f));
         }
 
         private void BuildGameOverPanel(Transform parent)
@@ -157,7 +189,7 @@ namespace BladeFrenzy.Gameplay.Core
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.sizeDelta = new Vector2(680f, 210f);
-            panelRect.anchoredPosition = new Vector2(0f, 70f);
+            panelRect.anchoredPosition = new Vector2(0f, 120f);
 
             Image panelImage = gameOverPanel.GetComponent<Image>();
             panelImage.color = new Color(0.11f, 0.04f, 0.04f, 0.92f);
@@ -183,6 +215,8 @@ namespace BladeFrenzy.Gameplay.Core
                 multiplierText.text = $"{_scoreManager.Multiplier}x";
             if (highScoreText != null)
                 highScoreText.text = _scoreManager.HighScore.ToString();
+            if (livesText != null && _livesManager != null)
+                livesText.text = BuildLivesString(_livesManager.CurrentLives, _livesManager.MaxLives);
             if (timerText != null)
                 timerText.text = Mathf.CeilToInt(_gameManager.RemainingTime).ToString();
             if (difficultyText != null)
@@ -233,6 +267,15 @@ namespace BladeFrenzy.Gameplay.Core
         private void HandleFruitMissed(FruitMissedEventArgs _)
         {
             SetStatus("Combo dropped on miss.", 1.2f);
+        }
+
+        private void HandleLivesChanged(LivesChangedEventArgs eventArgs)
+        {
+            if (livesText != null)
+                livesText.text = BuildLivesString(eventArgs.CurrentLives, eventArgs.MaxLives);
+
+            if (eventArgs.CurrentLives > 0)
+                SetStatus($"{eventArgs.CurrentLives} lives remaining.", 1.1f);
         }
 
         private void FindViewer()
@@ -374,6 +417,20 @@ namespace BladeFrenzy.Gameplay.Core
             button.onClick.AddListener(onClick);
 
             CreateText("Label", buttonObject.transform, label, 28, FontStyles.Bold, TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(160f, 40f), out TMP_Text _);
+        }
+
+        private static string BuildLivesString(int currentLives, int maxLives)
+        {
+            System.Text.StringBuilder builder = new System.Text.StringBuilder();
+            for (int index = 0; index < maxLives; index++)
+            {
+                if (index > 0)
+                    builder.Append(' ');
+
+                builder.Append(index < currentLives ? '\u2665' : '\u2661');
+            }
+
+            return builder.ToString();
         }
     }
 }
