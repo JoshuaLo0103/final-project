@@ -17,10 +17,25 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private AudioRolloffMode rolloffMode = AudioRolloffMode.Linear;
 
         private AudioClip _slashClip;
+        private AudioSource _audioSource;
 
         private void Awake()
         {
             _slashClip = Resources.Load<AudioClip>(resourcesClipPath);
+
+            _audioSource = GetComponent<AudioSource>();
+            if (_audioSource == null)
+                _audioSource = gameObject.AddComponent<AudioSource>();
+
+            _audioSource.playOnAwake = false;
+            _audioSource.loop = false;
+            _audioSource.spatialBlend = Mathf.Clamp01(spatialBlend);
+            _audioSource.volume = Mathf.Max(0f, volume);
+            _audioSource.minDistance = Mathf.Max(0.01f, minDistance);
+            _audioSource.maxDistance = Mathf.Max(_audioSource.minDistance, maxDistance);
+            _audioSource.spread = spread;
+            _audioSource.rolloffMode = rolloffMode;
+            _audioSource.dopplerLevel = 0f;
 
             if (_slashClip == null)
                 Debug.LogWarning($"SliceSoundEffect could not load clip at Resources/{resourcesClipPath}.");
@@ -38,34 +53,15 @@ namespace BladeFrenzy.Gameplay.Core
 
         private void HandleFruitSliced(FruitSliceEventArgs eventArgs)
         {
-            if (_slashClip == null || eventArgs.FruitData == null)
+            if (_slashClip == null || _audioSource == null)
                 return;
 
-            float pitch = ResolvePitch(eventArgs.FruitData.FruitType);
-            PlayAtPoint(eventArgs.WorldPosition, pitch);
-        }
+            if (spatialBlend > 0f)
+                transform.position = eventArgs.WorldPosition;
 
-        private void PlayAtPoint(Vector3 worldPosition, float pitch)
-        {
-            GameObject soundObject = new GameObject("SliceSoundEffect");
-            soundObject.transform.position = worldPosition;
-
-            AudioSource audioSource = soundObject.AddComponent<AudioSource>();
-            audioSource.clip = _slashClip;
-            audioSource.playOnAwake = false;
-            audioSource.spatialBlend = Mathf.Clamp01(spatialBlend);
-            audioSource.volume = Mathf.Max(0f, volume);
-            audioSource.pitch = pitch;
-            audioSource.minDistance = Mathf.Max(0.01f, minDistance);
-            audioSource.maxDistance = Mathf.Max(audioSource.minDistance, maxDistance);
-            audioSource.spread = spread;
-            audioSource.rolloffMode = rolloffMode;
-            audioSource.dopplerLevel = 0f;
-
-            audioSource.Play();
-
-            float clipDuration = _slashClip.length / Mathf.Max(0.01f, Mathf.Abs(pitch));
-            Destroy(soundObject, clipDuration + 0.1f);
+            FruitType fruitType = eventArgs.FruitData != null ? eventArgs.FruitData.FruitType : default;
+            _audioSource.pitch = ResolvePitch(fruitType);
+            _audioSource.PlayOneShot(_slashClip, volume);
         }
 
         private static float ResolvePitch(FruitType fruitType)
