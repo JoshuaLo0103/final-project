@@ -26,7 +26,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private float upwardBoost = 2.5f;
         [SerializeField] private float targetSpread = 1.1f;
         [SerializeField] private float torqueStrength = 7f;
-        [SerializeField] private float maxReachDistance = 1.1f;
+        [SerializeField] private float maxReachDistance = 0.40f;
         [SerializeField] private float swordReachPadding = 0.18f;
         [SerializeField] private float minimumReachFloor = 0.45f;
         [SerializeField] private Vector2 verticalTargetOffsetRange = new(-0.12f, 0.32f);
