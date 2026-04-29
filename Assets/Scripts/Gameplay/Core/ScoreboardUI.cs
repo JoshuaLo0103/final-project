@@ -60,6 +60,10 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private int highScoreFlashCount = 3;
         [SerializeField] private Color highScoreFlashColor = new(1f, 0.84f, 0.18f, 0.95f);
         [SerializeField] private Color highScorePopupColor = new(1f, 0.95f, 0.45f, 1f);
+        [SerializeField] private AudioClip gameOverClip;
+        [SerializeField, Range(0f, 1f)] private float gameOverVolume = 1f;
+        [SerializeField] private float gameOverMinDistance = 14f;
+        [SerializeField] private float gameOverMaxDistance = 60f;
 
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
@@ -82,6 +86,8 @@ namespace BladeFrenzy.Gameplay.Core
         private AudioSource _comboChimeSource;
         private Coroutine _comboPopupRoutine;
         private static AudioClip s_generatedComboChime;
+        private AudioSource _gameOverSource;
+        private static AudioClip s_generatedGameOverSting;
         private TMP_Text _highScorePopupText;
         private Image _panelImage;
         private Color _panelOriginalColor;
@@ -337,6 +343,7 @@ namespace BladeFrenzy.Gameplay.Core
             PlaceGameOverCanvasInReach();
             SetGameOverVisible(true, eventArgs.Snapshot, eventArgs.EndReason);
             SuppressSwordButtonActivation(Mathf.Max(MinimumGameOverButtonActivationDelay, gameOverButtonActivationDelay));
+            PlayGameOverSound();
         }
 
         private void HandleScoreChanged(ScoreChangedEventArgs eventArgs)
@@ -664,6 +671,7 @@ namespace BladeFrenzy.Gameplay.Core
             EnsureComboChimeSource();
             EnsureComboPopupText();
             EnsureHighScoreElements();
+            EnsureGameOverSoundSource();
         }
 
         private void EnsureHighScoreElements()
@@ -778,6 +786,52 @@ namespace BladeFrenzy.Gameplay.Core
             _comboChimeSource.maxDistance = Mathf.Max(_comboChimeSource.minDistance, comboChimeMaxDistance);
             _comboChimeSource.volume = comboChimeVolume;
             _comboChimeSource.bypassReverbZones = true;
+        }
+
+        private void EnsureGameOverSoundSource()
+        {
+            if (scoreboardCanvas == null)
+                return;
+
+            if (_gameOverSource == null)
+            {
+                Transform existing = scoreboardCanvas.transform.Find("GameOverAudio");
+                if (existing != null)
+                    _gameOverSource = existing.GetComponent<AudioSource>();
+            }
+
+            if (_gameOverSource == null)
+            {
+                GameObject audioObject = new("GameOverAudio", typeof(AudioSource));
+                audioObject.transform.SetParent(scoreboardCanvas.transform, false);
+                _gameOverSource = audioObject.GetComponent<AudioSource>();
+            }
+
+            _gameOverSource.playOnAwake = false;
+            _gameOverSource.spatialBlend = 1f;
+            _gameOverSource.spatialize = false;
+            _gameOverSource.dopplerLevel = 0f;
+            _gameOverSource.rolloffMode = AudioRolloffMode.Linear;
+            _gameOverSource.minDistance = Mathf.Max(0.1f, gameOverMinDistance);
+            _gameOverSource.maxDistance = Mathf.Max(_gameOverSource.minDistance, gameOverMaxDistance);
+            _gameOverSource.volume = gameOverVolume;
+            _gameOverSource.bypassReverbZones = false;
+            _gameOverSource.reverbZoneMix = 1.1f;
+        }
+
+        private void PlayGameOverSound()
+        {
+            EnsureGameOverSoundSource();
+
+            if (_gameOverSource == null)
+                return;
+
+            AudioClip clip = gameOverClip != null ? gameOverClip : GetGeneratedGameOverSting();
+            if (clip == null)
+                return;
+
+            _gameOverSource.pitch = 1f;
+            _gameOverSource.PlayOneShot(clip, Mathf.Clamp(gameOverVolume * 1.5f, 0f, 2f));
         }
 
         private void PlayComboChime(int multiplier)
@@ -922,6 +976,60 @@ namespace BladeFrenzy.Gameplay.Core
             s_generatedComboChime = AudioClip.Create("Generated Combo Chime", sampleCount, 1, sampleRate, false);
             s_generatedComboChime.SetData(samples, 0);
             return s_generatedComboChime;
+        }
+
+        private static AudioClip GetGeneratedGameOverSting()
+        {
+            if (s_generatedGameOverSting != null)
+                return s_generatedGameOverSting;
+
+            const int sampleRate = 44100;
+            const float lengthSeconds = 5.5f;
+            const float startFreqRoot = 440f;
+            const float endFreqRoot = 220f;
+            const float startFreqThird = 523.25f;
+            const float endFreqThird = 261.63f;
+            const float startFreqFifth = 659.25f;
+            const float endFreqFifth = 329.63f;
+
+            int sampleCount = Mathf.CeilToInt(sampleRate * lengthSeconds);
+            float[] samples = new float[sampleCount];
+
+            for (int index = 0; index < sampleCount; index++)
+            {
+                float time = index / (float)sampleRate;
+                float normalized = time / lengthSeconds;
+
+                float bend = Mathf.Pow(normalized, 1.2f);
+                float rootFreq = Mathf.Lerp(startFreqRoot, endFreqRoot, bend);
+                float thirdFreq = Mathf.Lerp(startFreqThird, endFreqThird, bend);
+                float fifthFreq = Mathf.Lerp(startFreqFifth, endFreqFifth, bend);
+
+                float attack = 1f - Mathf.Exp(-90f * time);
+                float tail = Mathf.Exp(-0.32f * time);
+                float fadeOut = Mathf.SmoothStep(1f, 0f, Mathf.InverseLerp(0.85f, 1f, normalized));
+                float envelope = attack * tail * fadeOut;
+
+                float vibrato = 1f + 0.022f * Mathf.Sin(2f * Mathf.PI * 5.5f * time);
+                float root = Mathf.Sin(2f * Mathf.PI * rootFreq * time * vibrato);
+                float third = Mathf.Sin(2f * Mathf.PI * thirdFreq * time * vibrato);
+                float fifth = Mathf.Sin(2f * Mathf.PI * fifthFreq * time * vibrato);
+                float octaveUp = Mathf.Sin(2f * Mathf.PI * rootFreq * 2f * time * vibrato) * 0.45f;
+                float subOctave = Mathf.Sin(2f * Mathf.PI * rootFreq * 0.5f * time) * 0.95f;
+                float deepBass = Mathf.Sin(2f * Mathf.PI * rootFreq * 0.25f * time) * 0.75f;
+                float crashEnvelope = Mathf.Exp(-5.5f * time);
+                float crash = (Random.value * 2f - 1f) * crashEnvelope * 1.35f;
+                float shimmerEnvelope = Mathf.Exp(-1.6f * time);
+                float shimmer = (Random.value * 2f - 1f) * shimmerEnvelope * 0.28f;
+
+                float mixed = root * 0.85f + third * 0.65f + fifth * 0.55f + octaveUp + subOctave * 0.7f + deepBass * 0.55f + crash + shimmer;
+                float saturated = (float)System.Math.Tanh(mixed * 1.9f);
+                samples[index] = Mathf.Clamp(saturated * envelope * 1.05f, -0.99f, 0.99f);
+            }
+
+            s_generatedGameOverSting = AudioClip.Create("Generated Game Over Sting", sampleCount, 1, sampleRate, false);
+            s_generatedGameOverSting.SetData(samples, 0);
+            return s_generatedGameOverSting;
         }
 
         private void CaptureScoreTextBaseScale()
