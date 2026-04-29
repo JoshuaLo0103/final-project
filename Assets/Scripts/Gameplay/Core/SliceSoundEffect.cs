@@ -92,6 +92,9 @@ namespace BladeFrenzy.Gameplay.Core
                 FruitType.Banana => new Vector2(1.08f, 1.15f),
                 FruitType.Orange => new Vector2(1.0f, 1.07f),
                 FruitType.Watermelon => new Vector2(0.88f, 0.96f),
+                FruitType.Grapes => new Vector2(1.03f, 1.11f),
+                FruitType.Pineapple => new Vector2(0.94f, 1.02f),
+                FruitType.Cherry => new Vector2(1.1f, 1.18f),
                 _ => new Vector2(1f, 1f)
             };
 
