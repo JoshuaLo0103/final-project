@@ -13785,7 +13785,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
       propertyPath: maxReachDistance
-      value: 0.55
+      value: 0.4
       objectReference: {fileID: 0}
     - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
       propertyPath: minimumReachFloor

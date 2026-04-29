@@ -10,8 +10,8 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private string starPrefabPath = "Copier/Star_Up";
 
         [Header("Placement")]
-        [SerializeField] private float forwardDistance = 1.55f;
-        [SerializeField] private float rightDistance = 0.9f;
+        [SerializeField] private float forwardDistance = -0.4f;
+        [SerializeField] private float rightDistance = -1.15f;
         [SerializeField] private float verticalOffset = 0f;
         [SerializeField] private bool autoPositionInEditor = false;
 
@@ -76,7 +76,7 @@ namespace BladeFrenzy.Gameplay.Spawning
                 }
             }
 
-            if (createdShrine || autoPositionInEditor)
+            if (createdShrine || autoPositionInEditor || Application.isPlaying)
                 PositionShrine();
             EnsureStand();
             EnsureOrb();
