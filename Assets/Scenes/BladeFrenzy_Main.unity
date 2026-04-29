@@ -1624,6 +1624,22 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 47.9
       objectReference: {fileID: 0}
+    - target: {fileID: 4270106137027898408, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      propertyPath: scorePunchScale
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4270106137027898408, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      propertyPath: comboPopupColor.b
+      value: 0.23921567
+      objectReference: {fileID: 0}
+    - target: {fileID: 4270106137027898408, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      propertyPath: comboPopupColor.g
+      value: 0.34580803
+      objectReference: {fileID: 0}
+    - target: {fileID: 4270106137027898408, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      propertyPath: comboPopupDuration
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 6150119462990368156, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
       propertyPath: m_Name
       value: BladeFrenzyRuntime
@@ -27078,7 +27094,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Core.SliceSoundEffect
   resourcesClipPath: Audio/22_Slash_04
+  bombResourcesClipPath: Audio/Explosion 1
   volume: 0.95
+  bombVolume: 1
   spatialBlend: 0
   minDistance: 1
   maxDistance: 1

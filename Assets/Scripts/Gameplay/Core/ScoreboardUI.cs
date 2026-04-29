@@ -25,6 +25,7 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private TMP_Text finalScoreText;
         [SerializeField] private TMP_Text finalComboText;
         [SerializeField] private TMP_Text statusText;
+        [SerializeField] private TMP_Text comboPopupText;
 
         [Header("Bootstrap")]
         [SerializeField] private bool buildRuntimeHudIfMissing = true;
@@ -49,6 +50,12 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField, Range(0f, 1f)] private float comboChimeVolume = 1f;
         [SerializeField] private float comboChimeMinDistance = 8f;
         [SerializeField] private float comboChimeMaxDistance = 30f;
+        [SerializeField] private float comboPopupDuration = 1.6f;
+        [SerializeField] private Vector2 comboPopupAnchoredPosition = new(0f, 60f);
+        [SerializeField] private Vector2 comboPopupTravel = new(0f, 70f);
+        [SerializeField] private Color comboPopupColor = new(1f, 0.82f, 0.24f, 1f);
+        [SerializeField] private float comboPopupFontSize = 96f;
+        [SerializeField] private Vector2 comboPopupSize = new(820f, 140f);
 
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
@@ -69,6 +76,7 @@ namespace BladeFrenzy.Gameplay.Core
         private Vector3 _scoreTextBaseScale = Vector3.one;
         private bool _hasScoreTextBaseScale;
         private AudioSource _comboChimeSource;
+        private Coroutine _comboPopupRoutine;
         private static AudioClip s_generatedComboChime;
 
         private void Awake()
@@ -310,6 +318,7 @@ namespace BladeFrenzy.Gameplay.Core
             RestoreCanvasPlacement();
             SetStatus("Slice clean. Avoid bombs.", 0f);
             SetGameOverVisible(false, default, string.Empty);
+            HideComboPopup();
         }
 
         private void HandleRunEnded(GameRunEndedEventArgs eventArgs)
@@ -335,6 +344,7 @@ namespace BladeFrenzy.Gameplay.Core
 
             SetStatus($"Combo tier up: {eventArgs.Multiplier}x", 1.5f);
             PlayComboChime(eventArgs.Multiplier);
+            PlayComboPopup(eventArgs.Multiplier);
         }
 
         private void HandleHighScoreBeaten(HighScoreBeatenEventArgs eventArgs)
@@ -511,6 +521,48 @@ namespace BladeFrenzy.Gameplay.Core
         {
             CaptureScoreTextBaseScale();
             EnsureComboChimeSource();
+            EnsureComboPopupText();
+        }
+
+        private void EnsureComboPopupText()
+        {
+            if (comboPopupText == null)
+            {
+                if (scoreboardCanvas == null)
+                    return;
+
+                Transform parent = scoreboardCanvas.transform.Find("Panel");
+                if (parent == null)
+                    parent = scoreboardCanvas.transform;
+
+                Transform existing = parent.Find("ComboPopupText");
+                if (existing != null)
+                    comboPopupText = existing.GetComponent<TMP_Text>();
+
+                if (comboPopupText == null)
+                {
+                    CreateText(
+                        "ComboPopupText",
+                        parent,
+                        string.Empty,
+                        comboPopupFontSize,
+                        FontStyles.Bold,
+                        TextAlignmentOptions.Center,
+                        new Vector2(0.5f, 0.5f),
+                        new Vector2(0.5f, 0.5f),
+                        comboPopupAnchoredPosition,
+                        comboPopupSize,
+                        out comboPopupText,
+                        comboPopupColor);
+                    comboPopupText.enableAutoSizing = false;
+                    comboPopupText.outlineWidth = 0.25f;
+                    comboPopupText.outlineColor = new Color32(40, 8, 0, 255);
+                }
+            }
+
+            comboPopupText.raycastTarget = false;
+            comboPopupText.transform.SetAsLastSibling();
+            comboPopupText.gameObject.SetActive(false);
         }
 
         private void EnsureComboChimeSource()
@@ -549,6 +601,106 @@ namespace BladeFrenzy.Gameplay.Core
 
             _comboChimeSource.pitch = Mathf.Clamp(0.92f + (multiplier - 2) * 0.08f, 0.8f, 1.24f);
             _comboChimeSource.PlayOneShot(clip, comboChimeVolume);
+        }
+
+        private void PlayComboPopup(int multiplier)
+        {
+            EnsureComboPopupText();
+
+            if (comboPopupText == null)
+                return;
+
+            if (_comboPopupRoutine != null)
+                StopCoroutine(_comboPopupRoutine);
+
+            _comboPopupRoutine = StartCoroutine(AnimateComboPopup(multiplier));
+        }
+
+        private IEnumerator AnimateComboPopup(int multiplier)
+        {
+            comboPopupText.gameObject.SetActive(true);
+            comboPopupText.transform.SetAsLastSibling();
+            comboPopupText.text = $"{multiplier}x COMBO!";
+            comboPopupText.color = comboPopupColor;
+
+            RectTransform popupRect = (RectTransform)comboPopupText.transform;
+            Vector2 startPosition = comboPopupAnchoredPosition;
+            Vector2 endPosition = startPosition + comboPopupTravel;
+            Vector3 startScale = Vector3.one * 0.35f;
+            Vector3 peakScale = Vector3.one * 1.55f;
+            Vector3 settleScale = Vector3.one * 1.25f;
+            float duration = Mathf.Max(0.1f, comboPopupDuration);
+            float popInPhase = Mathf.Min(0.18f, duration * 0.18f);
+            float settlePhase = Mathf.Min(0.12f, duration * 0.12f);
+            float fadeStart = duration * 0.55f;
+            float elapsed = 0f;
+
+            popupRect.anchoredPosition = startPosition;
+            popupRect.localScale = startScale;
+            SetTextAlpha(comboPopupText, 1f);
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float normalized = Mathf.Clamp01(elapsed / duration);
+
+                Vector3 currentScale;
+                if (elapsed <= popInPhase)
+                {
+                    float t = EaseOutCubic(Mathf.Clamp01(elapsed / popInPhase));
+                    currentScale = Vector3.LerpUnclamped(startScale, peakScale, t);
+                }
+                else if (elapsed <= popInPhase + settlePhase)
+                {
+                    float t = EaseOutCubic(Mathf.Clamp01((elapsed - popInPhase) / settlePhase));
+                    currentScale = Vector3.LerpUnclamped(peakScale, settleScale, t);
+                }
+                else
+                {
+                    currentScale = settleScale;
+                }
+
+                float travelEase = EaseOutCubic(normalized);
+                popupRect.anchoredPosition = Vector2.LerpUnclamped(startPosition, endPosition, travelEase);
+                popupRect.localScale = currentScale;
+
+                float alpha = elapsed < fadeStart
+                    ? 1f
+                    : 1f - EaseOutCubic(Mathf.Clamp01((elapsed - fadeStart) / Mathf.Max(0.0001f, duration - fadeStart)));
+                SetTextAlpha(comboPopupText, alpha);
+
+                yield return null;
+            }
+
+            comboPopupText.gameObject.SetActive(false);
+            comboPopupText.color = comboPopupColor;
+            popupRect.anchoredPosition = comboPopupAnchoredPosition;
+            popupRect.localScale = Vector3.one;
+            _comboPopupRoutine = null;
+        }
+
+        private void HideComboPopup()
+        {
+            if (_comboPopupRoutine != null)
+            {
+                StopCoroutine(_comboPopupRoutine);
+                _comboPopupRoutine = null;
+            }
+
+            if (comboPopupText == null)
+                return;
+
+            comboPopupText.gameObject.SetActive(false);
+            comboPopupText.color = comboPopupColor;
+            ((RectTransform)comboPopupText.transform).anchoredPosition = comboPopupAnchoredPosition;
+            comboPopupText.transform.localScale = Vector3.one;
+        }
+
+        private static void SetTextAlpha(TMP_Text text, float alpha)
+        {
+            Color color = text.color;
+            color.a = Mathf.Clamp01(alpha);
+            text.color = color;
         }
 
         private static AudioClip GetGeneratedComboChime()
@@ -641,6 +793,8 @@ namespace BladeFrenzy.Gameplay.Core
 
             if (scoreText != null && _hasScoreTextBaseScale)
                 scoreText.transform.localScale = _scoreTextBaseScale;
+
+            HideComboPopup();
         }
 
         private static float EaseOutCubic(float value)
