@@ -157,7 +157,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Spawning.SpawnedObject
   missedYThreshold: 42
   sourcePrefab: {fileID: 0}
-  cutSurfaceMaterial: {fileID: 2100000, guid: 522eaab0d8d665f42a85a897369fac9b, type: 2}
   cutSurfaceMaterial: {fileID: 2100000, guid: c435b94de71ace542877543573c260b7, type: 2}
   sliceHalfLifetime: 4
   sliceSeparationImpulse: 2.5

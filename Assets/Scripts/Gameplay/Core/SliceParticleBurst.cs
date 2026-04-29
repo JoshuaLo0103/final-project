@@ -179,9 +179,6 @@ namespace BladeFrenzy.Gameplay.Core
                 FruitType.Banana => new Color(1f, 0.94f, 0.08f),
                 FruitType.Orange => new Color(0.96f, 0.48f, 0.08f),
                 FruitType.Watermelon => new Color(0.9f, 0.18f, 0.27f),
-                FruitType.Grapes => new Color(0.45f, 0.16f, 0.72f),
-                FruitType.Pineapple => new Color(1f, 0.78f, 0.18f),
-                FruitType.Cherry => new Color(0.72f, 0.04f, 0.12f),
                 _ => Color.white
             };
         }
