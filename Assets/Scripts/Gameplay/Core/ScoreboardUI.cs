@@ -56,6 +56,10 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private Color comboPopupColor = new(1f, 0.82f, 0.24f, 1f);
         [SerializeField] private float comboPopupFontSize = 96f;
         [SerializeField] private Vector2 comboPopupSize = new(820f, 140f);
+        [SerializeField] private float highScoreFlashDuration = 1.8f;
+        [SerializeField] private int highScoreFlashCount = 3;
+        [SerializeField] private Color highScoreFlashColor = new(1f, 0.84f, 0.18f, 0.95f);
+        [SerializeField] private Color highScorePopupColor = new(1f, 0.95f, 0.45f, 1f);
 
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
@@ -78,6 +82,12 @@ namespace BladeFrenzy.Gameplay.Core
         private AudioSource _comboChimeSource;
         private Coroutine _comboPopupRoutine;
         private static AudioClip s_generatedComboChime;
+        private TMP_Text _highScorePopupText;
+        private Image _panelImage;
+        private Color _panelOriginalColor;
+        private bool _hasPanelOriginalColor;
+        private Coroutine _highScoreFlashRoutine;
+        private Coroutine _highScorePopupRoutine;
 
         private void Awake()
         {
@@ -319,6 +329,7 @@ namespace BladeFrenzy.Gameplay.Core
             SetStatus("Slice clean. Avoid bombs.", 0f);
             SetGameOverVisible(false, default, string.Empty);
             HideComboPopup();
+            HideHighScoreCelebration();
         }
 
         private void HandleRunEnded(GameRunEndedEventArgs eventArgs)
@@ -350,6 +361,136 @@ namespace BladeFrenzy.Gameplay.Core
         private void HandleHighScoreBeaten(HighScoreBeatenEventArgs eventArgs)
         {
             SetStatus($"New high score: {eventArgs.NewHighScore}", 1.5f);
+            PlayHighScoreCelebration(eventArgs.NewHighScore);
+        }
+
+        private void PlayHighScoreCelebration(int newHighScore)
+        {
+            EnsureHighScoreElements();
+
+            if (_panelImage != null)
+            {
+                if (_highScoreFlashRoutine != null)
+                    StopCoroutine(_highScoreFlashRoutine);
+                _highScoreFlashRoutine = StartCoroutine(AnimatePanelFlash());
+            }
+
+            if (_highScorePopupText != null)
+            {
+                if (_highScorePopupRoutine != null)
+                    StopCoroutine(_highScorePopupRoutine);
+                _highScorePopupRoutine = StartCoroutine(AnimateHighScorePopup(newHighScore));
+            }
+        }
+
+        private IEnumerator AnimatePanelFlash()
+        {
+            if (_panelImage == null)
+                yield break;
+
+            int pulses = Mathf.Max(1, highScoreFlashCount);
+            float totalDuration = Mathf.Max(0.2f, highScoreFlashDuration);
+            float pulseDuration = totalDuration / pulses;
+            Color baseColor = _hasPanelOriginalColor ? _panelOriginalColor : _panelImage.color;
+
+            for (int pulse = 0; pulse < pulses; pulse++)
+            {
+                float elapsed = 0f;
+                while (elapsed < pulseDuration)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = Mathf.Clamp01(elapsed / pulseDuration);
+                    float wave = Mathf.Sin(t * Mathf.PI);
+                    _panelImage.color = Color.LerpUnclamped(baseColor, highScoreFlashColor, wave);
+                    yield return null;
+                }
+            }
+
+            _panelImage.color = baseColor;
+            _highScoreFlashRoutine = null;
+        }
+
+        private IEnumerator AnimateHighScorePopup(int newHighScore)
+        {
+            _highScorePopupText.gameObject.SetActive(true);
+            _highScorePopupText.transform.SetAsLastSibling();
+            _highScorePopupText.text = $"NEW HIGH SCORE!\n{newHighScore}";
+            _highScorePopupText.color = highScorePopupColor;
+
+            RectTransform popupRect = (RectTransform)_highScorePopupText.transform;
+            Vector2 anchoredPosition = popupRect.anchoredPosition;
+            Vector3 startScale = Vector3.one * 0.4f;
+            Vector3 peakScale = Vector3.one * 1.6f;
+            Vector3 settleScale = Vector3.one * 1.3f;
+            float duration = Mathf.Max(0.4f, highScoreFlashDuration);
+            float popInPhase = Mathf.Min(0.22f, duration * 0.18f);
+            float settlePhase = Mathf.Min(0.16f, duration * 0.14f);
+            float fadeStart = duration * 0.65f;
+            float elapsed = 0f;
+
+            popupRect.localScale = startScale;
+            SetTextAlpha(_highScorePopupText, 1f);
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+
+                Vector3 currentScale;
+                if (elapsed <= popInPhase)
+                {
+                    float t = EaseOutCubic(Mathf.Clamp01(elapsed / popInPhase));
+                    currentScale = Vector3.LerpUnclamped(startScale, peakScale, t);
+                }
+                else if (elapsed <= popInPhase + settlePhase)
+                {
+                    float t = EaseOutCubic(Mathf.Clamp01((elapsed - popInPhase) / settlePhase));
+                    currentScale = Vector3.LerpUnclamped(peakScale, settleScale, t);
+                }
+                else
+                {
+                    currentScale = settleScale;
+                }
+
+                popupRect.localScale = currentScale;
+
+                float alpha = elapsed < fadeStart
+                    ? 1f
+                    : 1f - EaseOutCubic(Mathf.Clamp01((elapsed - fadeStart) / Mathf.Max(0.0001f, duration - fadeStart)));
+                SetTextAlpha(_highScorePopupText, alpha);
+
+                yield return null;
+            }
+
+            _highScorePopupText.gameObject.SetActive(false);
+            _highScorePopupText.color = highScorePopupColor;
+            popupRect.localScale = Vector3.one;
+            popupRect.anchoredPosition = anchoredPosition;
+            _highScorePopupRoutine = null;
+        }
+
+        private void HideHighScoreCelebration()
+        {
+            if (_highScoreFlashRoutine != null)
+            {
+                StopCoroutine(_highScoreFlashRoutine);
+                _highScoreFlashRoutine = null;
+            }
+
+            if (_highScorePopupRoutine != null)
+            {
+                StopCoroutine(_highScorePopupRoutine);
+                _highScorePopupRoutine = null;
+            }
+
+            if (_panelImage != null && _hasPanelOriginalColor)
+                _panelImage.color = _panelOriginalColor;
+
+            if (_highScorePopupText != null)
+            {
+                _highScorePopupText.gameObject.SetActive(false);
+                _highScorePopupText.color = highScorePopupColor;
+                _highScorePopupText.transform.localScale = Vector3.one;
+            }
         }
 
         private void HandleFruitMissed(FruitMissedEventArgs _)
@@ -522,6 +663,57 @@ namespace BladeFrenzy.Gameplay.Core
             CaptureScoreTextBaseScale();
             EnsureComboChimeSource();
             EnsureComboPopupText();
+            EnsureHighScoreElements();
+        }
+
+        private void EnsureHighScoreElements()
+        {
+            if (scoreboardCanvas == null)
+                return;
+
+            Transform panel = scoreboardCanvas.transform.Find("Panel");
+            if (panel == null)
+                panel = scoreboardCanvas.transform;
+
+            if (_panelImage == null)
+                _panelImage = panel.GetComponent<Image>();
+
+            if (_panelImage != null && !_hasPanelOriginalColor)
+            {
+                _panelOriginalColor = _panelImage.color;
+                _hasPanelOriginalColor = true;
+            }
+
+            if (_highScorePopupText == null)
+            {
+                Transform existing = panel.Find("HighScorePopupText");
+                if (existing != null)
+                    _highScorePopupText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (_highScorePopupText == null)
+            {
+                CreateText(
+                    "HighScorePopupText",
+                    panel,
+                    string.Empty,
+                    78f,
+                    FontStyles.Bold,
+                    TextAlignmentOptions.Center,
+                    new Vector2(0.5f, 0.5f),
+                    new Vector2(0.5f, 0.5f),
+                    new Vector2(0f, -20f),
+                    new Vector2(860f, 130f),
+                    out _highScorePopupText,
+                    highScorePopupColor);
+                _highScorePopupText.enableAutoSizing = false;
+                _highScorePopupText.outlineWidth = 0.3f;
+                _highScorePopupText.outlineColor = new Color32(60, 28, 0, 255);
+            }
+
+            _highScorePopupText.raycastTarget = false;
+            _highScorePopupText.transform.SetAsLastSibling();
+            _highScorePopupText.gameObject.SetActive(false);
         }
 
         private void EnsureComboPopupText()
@@ -795,6 +987,7 @@ namespace BladeFrenzy.Gameplay.Core
                 scoreText.transform.localScale = _scoreTextBaseScale;
 
             HideComboPopup();
+            HideHighScoreCelebration();
         }
 
         private static float EaseOutCubic(float value)
