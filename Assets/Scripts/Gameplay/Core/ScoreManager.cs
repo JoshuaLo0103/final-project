@@ -57,6 +57,8 @@ namespace BladeFrenzy.Gameplay.Core
             int awardedPoints = Mathf.Max(0, eventArgs.FruitData.PointValue) * Multiplier;
             Score += awardedPoints;
 
+            GameEvents.RaiseScoreChanged(Score, awardedPoints, ComboCount, Multiplier, eventArgs.WorldPosition);
+
             if (Score > HighScore)
             {
                 HighScore = Score;

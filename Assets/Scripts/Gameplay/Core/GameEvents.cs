@@ -11,6 +11,7 @@ namespace BladeFrenzy.Gameplay.Core
         public static event Action<FruitSliceEventArgs> OnFruitSliced;
         public static event Action<BombHitEventArgs> OnBombHit;
         public static event Action<FruitMissedEventArgs> OnFruitMissed;
+        public static event Action<ScoreChangedEventArgs> OnScoreChanged;
         public static event Action<ComboTierChangedEventArgs> OnComboTierChanged;
         public static event Action<HighScoreBeatenEventArgs> OnHighScoreBeaten;
         public static event Action<LivesChangedEventArgs> OnLivesChanged;
@@ -50,6 +51,11 @@ namespace BladeFrenzy.Gameplay.Core
         public static void RaiseComboTierChanged(int comboCount, int multiplier)
         {
             OnComboTierChanged?.Invoke(new ComboTierChangedEventArgs(comboCount, multiplier));
+        }
+
+        public static void RaiseScoreChanged(int score, int pointsAdded, int comboCount, int multiplier, Vector3 worldPosition)
+        {
+            OnScoreChanged?.Invoke(new ScoreChangedEventArgs(score, pointsAdded, comboCount, multiplier, worldPosition));
         }
 
         public static void RaiseHighScoreBeaten(int newHighScore)
@@ -114,6 +120,24 @@ namespace BladeFrenzy.Gameplay.Core
 
         public int ComboCount { get; }
         public int Multiplier { get; }
+    }
+
+    public readonly struct ScoreChangedEventArgs
+    {
+        public ScoreChangedEventArgs(int score, int pointsAdded, int comboCount, int multiplier, Vector3 worldPosition)
+        {
+            Score = score;
+            PointsAdded = pointsAdded;
+            ComboCount = comboCount;
+            Multiplier = multiplier;
+            WorldPosition = worldPosition;
+        }
+
+        public int Score { get; }
+        public int PointsAdded { get; }
+        public int ComboCount { get; }
+        public int Multiplier { get; }
+        public Vector3 WorldPosition { get; }
     }
 
     public readonly struct HighScoreBeatenEventArgs

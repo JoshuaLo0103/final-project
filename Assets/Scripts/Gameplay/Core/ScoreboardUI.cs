@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -41,6 +42,10 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private Vector3 gameOverCanvasScale = new(0.005f, 0.005f, 0.005f);
         [SerializeField] private float gameOverButtonActivationDelay = 3f;
 
+        [Header("Juicy Feedback")]
+        [SerializeField] private float scorePunchScale = 1.28f;
+        [SerializeField] private float scorePunchDuration = 0.22f;
+
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
         private DifficultyManager _difficultyManager;
@@ -56,6 +61,9 @@ namespace BladeFrenzy.Gameplay.Core
         private Vector3 _originalCanvasScale;
         private bool _hasOriginalCanvasPlacement;
         private bool _gameOverPlacementActive;
+        private Coroutine _scorePunchRoutine;
+        private Vector3 _scoreTextBaseScale = Vector3.one;
+        private bool _hasScoreTextBaseScale;
 
         private void Awake()
         {
@@ -72,6 +80,7 @@ namespace BladeFrenzy.Gameplay.Core
                 EnsureLivesDisplay();
 
             EnsureWorldSpaceUiInput();
+            EnsureFeedbackElements();
             BindRuntimeButtons();
             CacheCanvasPlacement();
 
@@ -86,6 +95,7 @@ namespace BladeFrenzy.Gameplay.Core
         {
             GameEvents.OnRunStarted += HandleRunStarted;
             GameEvents.OnRunEnded += HandleRunEnded;
+            GameEvents.OnScoreChanged += HandleScoreChanged;
             GameEvents.OnComboTierChanged += HandleComboTierChanged;
             GameEvents.OnHighScoreBeaten += HandleHighScoreBeaten;
             GameEvents.OnFruitMissed += HandleFruitMissed;
@@ -96,15 +106,19 @@ namespace BladeFrenzy.Gameplay.Core
         {
             GameEvents.OnRunStarted -= HandleRunStarted;
             GameEvents.OnRunEnded -= HandleRunEnded;
+            GameEvents.OnScoreChanged -= HandleScoreChanged;
             GameEvents.OnComboTierChanged -= HandleComboTierChanged;
             GameEvents.OnHighScoreBeaten -= HandleHighScoreBeaten;
             GameEvents.OnFruitMissed -= HandleFruitMissed;
             GameEvents.OnLivesChanged -= HandleLivesChanged;
+
+            StopFeedbackAnimations();
         }
 
         private void Start()
         {
             EnsureWorldSpaceUiInput();
+            EnsureFeedbackElements();
             BindRuntimeButtons();
             CacheCanvasPlacement();
         }
@@ -194,6 +208,7 @@ namespace BladeFrenzy.Gameplay.Core
             BuildGameOverPanel(panel.transform);
             ApplySerializedReferences();
             EnsureWorldSpaceUiInput();
+            EnsureFeedbackElements();
         }
 
         private void EnsureLivesDisplay()
@@ -296,6 +311,15 @@ namespace BladeFrenzy.Gameplay.Core
             PlaceGameOverCanvasInReach();
             SetGameOverVisible(true, eventArgs.Snapshot, eventArgs.EndReason);
             SuppressSwordButtonActivation(Mathf.Max(MinimumGameOverButtonActivationDelay, gameOverButtonActivationDelay));
+        }
+
+        private void HandleScoreChanged(ScoreChangedEventArgs eventArgs)
+        {
+            if (scoreText != null)
+                scoreText.text = eventArgs.Score.ToString();
+
+            if (eventArgs.PointsAdded > 0)
+                PlayScorePunch();
         }
 
         private void HandleComboTierChanged(ComboTierChangedEventArgs eventArgs)
@@ -474,6 +498,80 @@ namespace BladeFrenzy.Gameplay.Core
 
             statusText.text = message;
             _statusMessageTimer = duration;
+        }
+
+        private void EnsureFeedbackElements()
+        {
+            CaptureScoreTextBaseScale();
+        }
+
+        private void CaptureScoreTextBaseScale()
+        {
+            if (_hasScoreTextBaseScale || scoreText == null)
+                return;
+
+            _scoreTextBaseScale = scoreText.transform.localScale;
+            _hasScoreTextBaseScale = true;
+        }
+
+        private void PlayScorePunch()
+        {
+            if (scoreText == null)
+                return;
+
+            CaptureScoreTextBaseScale();
+
+            if (_scorePunchRoutine != null)
+                StopCoroutine(_scorePunchRoutine);
+
+            _scorePunchRoutine = StartCoroutine(AnimateScorePunch());
+        }
+
+        private IEnumerator AnimateScorePunch()
+        {
+            Transform scoreTransform = scoreText.transform;
+            float duration = Mathf.Max(0.05f, scorePunchDuration);
+            float halfDuration = duration * 0.5f;
+            float elapsed = 0f;
+            Vector3 peakScale = _scoreTextBaseScale * Mathf.Max(1f, scorePunchScale);
+
+            while (elapsed < halfDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = EaseOutCubic(Mathf.Clamp01(elapsed / halfDuration));
+                scoreTransform.localScale = Vector3.LerpUnclamped(_scoreTextBaseScale, peakScale, t);
+                yield return null;
+            }
+
+            elapsed = 0f;
+            while (elapsed < halfDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = EaseOutCubic(Mathf.Clamp01(elapsed / halfDuration));
+                scoreTransform.localScale = Vector3.LerpUnclamped(peakScale, _scoreTextBaseScale, t);
+                yield return null;
+            }
+
+            scoreTransform.localScale = _scoreTextBaseScale;
+            _scorePunchRoutine = null;
+        }
+
+        private void StopFeedbackAnimations()
+        {
+            if (_scorePunchRoutine != null)
+            {
+                StopCoroutine(_scorePunchRoutine);
+                _scorePunchRoutine = null;
+            }
+
+            if (scoreText != null && _hasScoreTextBaseScale)
+                scoreText.transform.localScale = _scoreTextBaseScale;
+        }
+
+        private static float EaseOutCubic(float value)
+        {
+            float inverted = 1f - value;
+            return 1f - inverted * inverted * inverted;
         }
 
         private void ApplySerializedReferences()
