@@ -2,11 +2,15 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.UI;
 
 namespace BladeFrenzy.Gameplay.Core
 {
     public class ScoreboardUI : MonoBehaviour
     {
+        private const float MinimumGameOverDistance = 2.5f;
+        private const float MinimumGameOverButtonActivationDelay = 3f;
+
         [Header("Scene References")]
         [SerializeField] private Canvas scoreboardCanvas;
         [SerializeField] private TMP_Text scoreText;
@@ -31,6 +35,12 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private bool followViewer = false;
         [SerializeField] private bool placeFromViewerOnStart = false;
 
+        [Header("Game Over Placement")]
+        [SerializeField] private bool placeGameOverInReach = true;
+        [SerializeField] private Vector3 gameOverOffsetFromViewer = new(0f, -0.05f, 2.5f);
+        [SerializeField] private Vector3 gameOverCanvasScale = new(0.005f, 0.005f, 0.005f);
+        [SerializeField] private float gameOverButtonActivationDelay = 3f;
+
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
         private DifficultyManager _difficultyManager;
@@ -41,6 +51,11 @@ namespace BladeFrenzy.Gameplay.Core
         private Vector3 _targetPosition;
         private Quaternion _targetRotation;
         private bool _placementInitialized;
+        private Vector3 _originalCanvasPosition;
+        private Quaternion _originalCanvasRotation;
+        private Vector3 _originalCanvasScale;
+        private bool _hasOriginalCanvasPlacement;
+        private bool _gameOverPlacementActive;
 
         private void Awake()
         {
@@ -55,6 +70,10 @@ namespace BladeFrenzy.Gameplay.Core
                 BuildRuntimeHud();
             else
                 EnsureLivesDisplay();
+
+            EnsureWorldSpaceUiInput();
+            BindRuntimeButtons();
+            CacheCanvasPlacement();
 
             FindViewer();
             if (placeFromViewerOnStart)
@@ -81,6 +100,13 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnHighScoreBeaten -= HandleHighScoreBeaten;
             GameEvents.OnFruitMissed -= HandleFruitMissed;
             GameEvents.OnLivesChanged -= HandleLivesChanged;
+        }
+
+        private void Start()
+        {
+            EnsureWorldSpaceUiInput();
+            BindRuntimeButtons();
+            CacheCanvasPlacement();
         }
 
         private void LateUpdate()
@@ -167,6 +193,7 @@ namespace BladeFrenzy.Gameplay.Core
 
             BuildGameOverPanel(panel.transform);
             ApplySerializedReferences();
+            EnsureWorldSpaceUiInput();
         }
 
         private void EnsureLivesDisplay()
@@ -259,13 +286,16 @@ namespace BladeFrenzy.Gameplay.Core
 
         private void HandleRunStarted()
         {
+            RestoreCanvasPlacement();
             SetStatus("Slice clean. Avoid bombs.", 0f);
             SetGameOverVisible(false, default, string.Empty);
         }
 
         private void HandleRunEnded(GameRunEndedEventArgs eventArgs)
         {
+            PlaceGameOverCanvasInReach();
             SetGameOverVisible(true, eventArgs.Snapshot, eventArgs.EndReason);
+            SuppressSwordButtonActivation(Mathf.Max(MinimumGameOverButtonActivationDelay, gameOverButtonActivationDelay));
         }
 
         private void HandleComboTierChanged(ComboTierChangedEventArgs eventArgs)
@@ -328,12 +358,113 @@ namespace BladeFrenzy.Gameplay.Core
             _placementInitialized = true;
         }
 
-        private static void EnsureEventSystem()
+        private void CacheCanvasPlacement()
         {
-            if (FindFirstObjectByType<EventSystem>() != null)
+            if (_hasOriginalCanvasPlacement || scoreboardCanvas == null)
                 return;
 
-            new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+            Transform canvasTransform = scoreboardCanvas.transform;
+            _originalCanvasPosition = canvasTransform.position;
+            _originalCanvasRotation = canvasTransform.rotation;
+            _originalCanvasScale = canvasTransform.localScale;
+            _hasOriginalCanvasPlacement = true;
+        }
+
+        private void RestoreCanvasPlacement()
+        {
+            if (!_gameOverPlacementActive || !_hasOriginalCanvasPlacement || scoreboardCanvas == null)
+                return;
+
+            Transform canvasTransform = scoreboardCanvas.transform;
+            canvasTransform.position = _originalCanvasPosition;
+            canvasTransform.rotation = _originalCanvasRotation;
+            canvasTransform.localScale = _originalCanvasScale;
+            _gameOverPlacementActive = false;
+        }
+
+        private void PlaceGameOverCanvasInReach()
+        {
+            if (!placeGameOverInReach || scoreboardCanvas == null)
+                return;
+
+            if (_viewer == null)
+                FindViewer();
+
+            if (_viewer == null)
+                return;
+
+            CacheCanvasPlacement();
+
+            Vector3 flatForward = Vector3.ProjectOnPlane(_viewer.forward, Vector3.up).normalized;
+            if (flatForward.sqrMagnitude <= 0.0001f)
+                flatForward = _viewer.forward.sqrMagnitude > 0.0001f ? _viewer.forward.normalized : Vector3.forward;
+
+            Vector3 flatRight = Vector3.ProjectOnPlane(_viewer.right, Vector3.up).normalized;
+            if (flatRight.sqrMagnitude <= 0.0001f)
+                flatRight = Vector3.right;
+
+            Transform canvasTransform = scoreboardCanvas.transform;
+            float forwardDistance = Mathf.Max(MinimumGameOverDistance, Mathf.Abs(gameOverOffsetFromViewer.z));
+            canvasTransform.position = _viewer.position
+                + flatRight * gameOverOffsetFromViewer.x
+                + Vector3.up * gameOverOffsetFromViewer.y
+                + flatForward * forwardDistance;
+            canvasTransform.rotation = Quaternion.LookRotation(flatForward, Vector3.up);
+            canvasTransform.localScale = gameOverCanvasScale;
+            _gameOverPlacementActive = true;
+        }
+
+        private static void EnsureEventSystem()
+        {
+            EventSystem[] eventSystems = FindObjectsByType<EventSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            EventSystem eventSystem = null;
+            foreach (EventSystem candidate in eventSystems)
+            {
+                if (candidate.GetComponent<XRUIInputModule>() != null)
+                {
+                    eventSystem = candidate;
+                    break;
+                }
+            }
+
+            if (eventSystem == null && eventSystems.Length > 0)
+                eventSystem = eventSystems[0];
+
+            if (eventSystem == null)
+            {
+                GameObject eventSystemObject = new("EventSystem", typeof(EventSystem));
+                eventSystem = eventSystemObject.GetComponent<EventSystem>();
+            }
+
+            eventSystem.gameObject.SetActive(true);
+            eventSystem.enabled = true;
+
+            XRUIInputModule xrInputModule = eventSystem.GetComponent<XRUIInputModule>();
+            if (xrInputModule == null)
+                xrInputModule = eventSystem.gameObject.AddComponent<XRUIInputModule>();
+
+            xrInputModule.enableXRInput = true;
+            xrInputModule.enableMouseInput = true;
+            xrInputModule.enableTouchInput = true;
+            EventSystem.current = eventSystem;
+
+            foreach (BaseInputModule inputModule in eventSystem.GetComponents<BaseInputModule>())
+            {
+                if (inputModule != xrInputModule)
+                    inputModule.enabled = false;
+            }
+
+            foreach (EventSystem duplicate in eventSystems)
+            {
+                if (duplicate == eventSystem)
+                    continue;
+
+                foreach (BaseInputModule inputModule in duplicate.GetComponents<BaseInputModule>())
+                    inputModule.enabled = false;
+
+                duplicate.enabled = false;
+                duplicate.gameObject.SetActive(false);
+            }
         }
 
         private void SetStatus(string message, float duration)
@@ -434,6 +565,76 @@ namespace BladeFrenzy.Gameplay.Core
             button.onClick.AddListener(onClick);
 
             CreateText("Label", buttonObject.transform, label, 28, FontStyles.Bold, TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(160f, 40f), out TMP_Text _);
+        }
+
+        private void EnsureWorldSpaceUiInput()
+        {
+            EnsureEventSystem();
+
+            if (scoreboardCanvas == null)
+                return;
+
+            if (scoreboardCanvas.worldCamera == null)
+                scoreboardCanvas.worldCamera = Camera.main;
+
+            if (scoreboardCanvas.GetComponent<GraphicRaycaster>() == null)
+                scoreboardCanvas.gameObject.AddComponent<GraphicRaycaster>();
+
+            if (scoreboardCanvas.GetComponent<TrackedDeviceGraphicRaycaster>() == null)
+                scoreboardCanvas.gameObject.AddComponent<TrackedDeviceGraphicRaycaster>();
+        }
+
+        private void BindRuntimeButtons()
+        {
+            BindButton("RestartButton", HandleRestartClicked);
+            BindButton("QuitButton", HandleQuitClicked);
+        }
+
+        private void BindButton(string buttonName, UnityEngine.Events.UnityAction action)
+        {
+            Transform buttonTransform = gameOverPanel != null
+                ? gameOverPanel.transform.Find(buttonName)
+                : transform.Find(buttonName);
+
+            Button button = buttonTransform != null
+                ? buttonTransform.GetComponent<Button>()
+                : null;
+
+            if (button == null)
+                return;
+
+            button.onClick.RemoveListener(action);
+            button.onClick.AddListener(action);
+            EnsureSwordButtonActivation(button);
+        }
+
+        private static void EnsureSwordButtonActivation(Button button)
+        {
+            SwordUiButtonActivator activator = button.GetComponent<SwordUiButtonActivator>();
+            if (activator == null)
+                activator = button.gameObject.AddComponent<SwordUiButtonActivator>();
+
+            activator.Configure(button);
+        }
+
+        private void SuppressSwordButtonActivation(float seconds)
+        {
+            if (gameOverPanel == null)
+                return;
+
+            SwordUiButtonActivator[] activators = gameOverPanel.GetComponentsInChildren<SwordUiButtonActivator>(true);
+            foreach (SwordUiButtonActivator activator in activators)
+                activator.SuppressActivationFor(seconds);
+        }
+
+        private void HandleRestartClicked()
+        {
+            _gameManager?.RestartRun();
+        }
+
+        private void HandleQuitClicked()
+        {
+            _gameManager?.QuitGame();
         }
 
         private static string BuildLivesString(int currentLives, int maxLives)
