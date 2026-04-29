@@ -1553,6 +1553,22 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 47.9
       objectReference: {fileID: 0}
+    - target: {fileID: 4270106137027898408, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      propertyPath: scorePunchScale
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4270106137027898408, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      propertyPath: comboPopupColor.b
+      value: 0.23921567
+      objectReference: {fileID: 0}
+    - target: {fileID: 4270106137027898408, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      propertyPath: comboPopupColor.g
+      value: 0.34580803
+      objectReference: {fileID: 0}
+    - target: {fileID: 4270106137027898408, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
+      propertyPath: comboPopupDuration
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 6150119462990368156, guid: e93f9bb4fd664094bae8ae3ef230b168, type: 3}
       propertyPath: m_Name
       value: BladeFrenzyRuntime
