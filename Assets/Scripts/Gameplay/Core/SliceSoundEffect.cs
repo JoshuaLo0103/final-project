@@ -7,9 +7,11 @@ namespace BladeFrenzy.Gameplay.Core
     {
         [Header("Clip")]
         [SerializeField] private string resourcesClipPath = "Audio/22_Slash_04";
+        [SerializeField] private string bombResourcesClipPath = "Audio/Explosion 1";
 
         [Header("Spatial Audio")]
         [SerializeField] private float volume = 0.95f;
+        [SerializeField] private float bombVolume = 1f;
         [SerializeField] private float spatialBlend = 0f;
         [SerializeField] private float minDistance = 1f;
         [SerializeField] private float maxDistance = 1f;
@@ -17,11 +19,13 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private AudioRolloffMode rolloffMode = AudioRolloffMode.Linear;
 
         private AudioClip _slashClip;
+        private AudioClip _bombClip;
         private AudioSource _audioSource;
 
         private void Awake()
         {
             _slashClip = Resources.Load<AudioClip>(resourcesClipPath);
+            _bombClip = Resources.Load<AudioClip>(bombResourcesClipPath);
 
             _audioSource = GetComponent<AudioSource>();
             if (_audioSource == null)
@@ -39,16 +43,20 @@ namespace BladeFrenzy.Gameplay.Core
 
             if (_slashClip == null)
                 Debug.LogWarning($"SliceSoundEffect could not load clip at Resources/{resourcesClipPath}.");
+            if (_bombClip == null)
+                Debug.LogWarning($"SliceSoundEffect could not load bomb clip at Resources/{bombResourcesClipPath}.");
         }
 
         private void OnEnable()
         {
             GameEvents.OnFruitSliced += HandleFruitSliced;
+            GameEvents.OnBombHit += HandleBombHit;
         }
 
         private void OnDisable()
         {
             GameEvents.OnFruitSliced -= HandleFruitSliced;
+            GameEvents.OnBombHit -= HandleBombHit;
         }
 
         private void HandleFruitSliced(FruitSliceEventArgs eventArgs)
@@ -62,6 +70,18 @@ namespace BladeFrenzy.Gameplay.Core
             FruitType fruitType = eventArgs.FruitData != null ? eventArgs.FruitData.FruitType : default;
             _audioSource.pitch = ResolvePitch(fruitType);
             _audioSource.PlayOneShot(_slashClip, volume);
+        }
+
+        private void HandleBombHit(BombHitEventArgs eventArgs)
+        {
+            if (_bombClip == null || _audioSource == null)
+                return;
+
+            if (spatialBlend > 0f)
+                transform.position = eventArgs.WorldPosition;
+
+            _audioSource.pitch = Random.Range(0.94f, 1.04f);
+            _audioSource.PlayOneShot(_bombClip, bombVolume);
         }
 
         private static float ResolvePitch(FruitType fruitType)
