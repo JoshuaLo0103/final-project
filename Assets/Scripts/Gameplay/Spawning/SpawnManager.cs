@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using BladeFrenzy.Gameplay.Core;
+using BladeFrenzy.Gameplay.Scoring;
 using UnityEngine;
 
 namespace BladeFrenzy.Gameplay.Spawning
@@ -24,6 +25,10 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private float upwardBoost = 2.5f;
         [SerializeField] private float targetSpread = 1.1f;
         [SerializeField] private float torqueStrength = 7f;
+        [SerializeField] private float maxReachDistance = 1.1f;
+        [SerializeField] private float swordReachPadding = 0.18f;
+        [SerializeField] private float minimumReachFloor = 0.45f;
+        [SerializeField] private Vector2 verticalTargetOffsetRange = new(-0.12f, 0.32f);
 
         [Header("Distribution")]
         [SerializeField, Range(0f, 1f)] private float bombChance = 0.15f;
@@ -32,6 +37,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         private Coroutine _spawnLoop;
         private float _runStartTime;
         private float _baseLaunchSpeed;
+        private SwordHitScorer _cachedSword;
 
         private void Start()
         {
@@ -140,9 +146,7 @@ namespace BladeFrenzy.Gameplay.Spawning
             Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
             SpawnedObject instance = GetOrCreate(prefab);
 
-            Vector3 target = targetPoint.position;
-            target += targetPoint.right * Random.Range(-targetSpread, targetSpread);
-            target += targetPoint.up * Random.Range(-0.2f, 0.5f);
+            Vector3 target = ResolveDynamicTargetPoint();
 
             Vector3 launchDirection = (target - spawnPoint.position).normalized;
             Vector3 velocity = launchDirection * launchSpeed + Vector3.up * upwardBoost;
@@ -154,6 +158,45 @@ namespace BladeFrenzy.Gameplay.Spawning
                 Random.rotation,
                 velocity,
                 angularVelocity);
+        }
+
+        private Vector3 ResolveDynamicTargetPoint()
+        {
+            Vector3 playerOrigin = targetPoint.position;
+
+            Transform viewer = Camera.main != null ? Camera.main.transform : targetPoint;
+            Vector3 forward = Vector3.ProjectOnPlane(viewer.forward, Vector3.up).normalized;
+            Vector3 right = Vector3.ProjectOnPlane(viewer.right, Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.forward;
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.right;
+
+            float swordReach = ResolveSwordReach();
+            float minimumReachDistance = Mathf.Max(minimumReachFloor, swordReach - swordReachPadding);
+            float maximumReachDistance = Mathf.Max(minimumReachDistance + 0.2f, maxReachDistance);
+            float reachDistance = Random.Range(minimumReachDistance, maximumReachDistance);
+
+            Vector3 target = playerOrigin + forward * reachDistance;
+            target += right * Random.Range(-targetSpread, targetSpread);
+            target += Vector3.up * Random.Range(verticalTargetOffsetRange.x, verticalTargetOffsetRange.y);
+            return target;
+        }
+
+        private float ResolveSwordReach()
+        {
+            if (_cachedSword == null)
+                _cachedSword = FindFirstObjectByType<SwordHitScorer>();
+
+            if (_cachedSword == null)
+                return minimumReachFloor + 0.5f;
+
+            Renderer swordRenderer = _cachedSword.GetComponent<Renderer>();
+            if (swordRenderer == null)
+                return minimumReachFloor + 0.5f;
+
+            Vector3 swordSize = swordRenderer.bounds.size;
+            return Mathf.Max(swordSize.x, Mathf.Max(swordSize.y, swordSize.z));
         }
 
         private SpawnedObject GetOrCreate(SpawnedObject prefab)

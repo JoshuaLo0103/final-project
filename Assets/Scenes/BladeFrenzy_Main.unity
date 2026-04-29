@@ -13712,19 +13712,55 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
       propertyPath: launchSpeed
-      value: 2.95
+      value: 5.2
       objectReference: {fileID: 0}
     - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
       propertyPath: upwardBoost
-      value: -0.2
+      value: 1.2
       objectReference: {fileID: 0}
     - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
       propertyPath: targetSpread
-      value: 0.05
+      value: 0.06
       objectReference: {fileID: 0}
     - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
       propertyPath: spawnInterval
       value: 2.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: maxReachDistance
+      value: 0.82
+      objectReference: {fileID: 0}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: minimumReachFloor
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: swordReachPadding
+      value: 0.22
+      objectReference: {fileID: 0}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: fruitPrefabs.Array.size
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: 'fruitPrefabs.Array.data[4]'
+      value: 
+      objectReference: {fileID: 921240574078463106, guid: a4a0bf9039e5be94b85dcaf7228ad691, type: 3}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: 'fruitPrefabs.Array.data[5]'
+      value: 
+      objectReference: {fileID: 921240574078463106, guid: 6d4afd8e436a7e949bc2002a78b9900c, type: 3}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: 'fruitPrefabs.Array.data[6]'
+      value: 
+      objectReference: {fileID: 921240574078463106, guid: 960d62b5f1a7be849b2eced6ce5aa86b, type: 3}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: verticalTargetOffsetRange.x
+      value: -0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7868549101338442093, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
+      propertyPath: verticalTargetOffsetRange.y
+      value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: 8847989280194261229, guid: d448e4f77661ec04daa04d704a73feba, type: 3}
       propertyPath: m_LocalPosition.x
