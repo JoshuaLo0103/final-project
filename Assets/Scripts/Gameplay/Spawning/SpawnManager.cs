@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using BladeFrenzy.Gameplay.Core;
+using BladeFrenzy.Gameplay.Slicing;
 using UnityEngine;
 
 namespace BladeFrenzy.Gameplay.Spawning
@@ -54,6 +55,27 @@ namespace BladeFrenzy.Gameplay.Spawning
             {
                 StopCoroutine(_spawnLoop);
                 _spawnLoop = null;
+            }
+        }
+
+        public void ResetSpawnedObjects()
+        {
+            StopRun();
+
+            SpawnedObject[] spawnedObjects = GetComponentsInChildren<SpawnedObject>(true);
+            foreach (SpawnedObject spawnedObject in spawnedObjects)
+            {
+                if (spawnedObject != null && spawnedObject.gameObject.activeInHierarchy)
+                    spawnedObject.TryReturnToPool(false);
+            }
+
+            SlicedFruitPiece[] slicedPieces = FindObjectsByType<SlicedFruitPiece>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            foreach (SlicedFruitPiece slicedPiece in slicedPieces)
+            {
+                if (slicedPiece != null)
+                    Destroy(slicedPiece.gameObject);
             }
         }
 
