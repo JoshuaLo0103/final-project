@@ -25,16 +25,20 @@ namespace BladeFrenzy.Gameplay.Core
 
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                XRGrabInteractable sword = FindSword();
-                XRBaseInteractor rightHandInteractor = FindRightHandInteractor();
+                XRBaseInteractor rightHandInteractor = FindHandInteractor(InteractorHandedness.Right);
+                XRBaseInteractor leftHandInteractor = FindHandInteractor(InteractorHandedness.Left);
 
-                if (TryEquip(sword, rightHandInteractor))
+                XRGrabInteractable rightSword = FindSword(preferLeftNamedSword: false);
+                bool rightEquipped = TryEquip(rightSword, rightHandInteractor);
+                bool leftEquipped = TryEquip(FindSword(preferLeftNamedSword: true, excludedSword: rightSword), leftHandInteractor);
+
+                if (rightEquipped && leftEquipped)
                     yield break;
 
                 yield return new WaitForSeconds(retryDelay);
             }
 
-            Debug.LogWarning("SwordAutoEquip could not find a valid right-hand interactor and sword at startup.");
+            Debug.LogWarning("SwordAutoEquip could not find valid left/right hand interactors and swords at startup.");
         }
 
         private static void EnsureControllerMode()
@@ -47,22 +51,29 @@ namespace BladeFrenzy.Gameplay.Core
             ActivateObject(modalityManager != null ? modalityManager.rightController : null);
         }
 
-        private static XRGrabInteractable FindSword()
+        private static XRGrabInteractable FindSword(bool preferLeftNamedSword, XRGrabInteractable excludedSword = null)
         {
+            XRGrabInteractable fallback = null;
             XRGrabInteractable[] interactables = FindObjectsByType<XRGrabInteractable>(FindObjectsSortMode.None);
             foreach (XRGrabInteractable interactable in interactables)
             {
-                if (interactable == null)
+                if (interactable == null || interactable == excludedSword)
                     continue;
 
-                if (interactable.TryGetComponent<SwordHitScorer>(out _))
+                if (!interactable.TryGetComponent<SwordHitScorer>(out _) || interactable.isSelected)
+                    continue;
+
+                bool isLeftNamedSword = interactable.name.Contains("Left", System.StringComparison.OrdinalIgnoreCase);
+                if (isLeftNamedSword == preferLeftNamedSword)
                     return interactable;
+
+                fallback ??= interactable;
             }
 
-            return null;
+            return fallback;
         }
 
-        private static XRBaseInteractor FindRightHandInteractor()
+        private static XRBaseInteractor FindHandInteractor(InteractorHandedness handedness)
         {
             XRBaseInteractor fallback = null;
             XRBaseInteractor[] interactors = FindObjectsByType<XRBaseInteractor>(FindObjectsSortMode.None);
@@ -71,7 +82,7 @@ namespace BladeFrenzy.Gameplay.Core
                 if (interactor == null || !interactor.isActiveAndEnabled)
                     continue;
 
-                if (interactor.handedness != InteractorHandedness.Right)
+                if (interactor.handedness != handedness)
                     continue;
 
                 if (interactor is NearFarInteractor)
@@ -84,18 +95,18 @@ namespace BladeFrenzy.Gameplay.Core
             return fallback;
         }
 
-        private static bool TryEquip(XRGrabInteractable sword, XRBaseInteractor rightHandInteractor)
+        private static bool TryEquip(XRGrabInteractable sword, XRBaseInteractor handInteractor)
         {
-            if (sword == null || rightHandInteractor == null)
+            if (sword == null || handInteractor == null)
                 return false;
 
             if (sword.isSelected)
                 return true;
 
-            if (rightHandInteractor is not IXRSelectInteractor || sword is not IXRSelectInteractable selectInteractable)
+            if (handInteractor is not IXRSelectInteractor || sword is not IXRSelectInteractable selectInteractable)
                 return false;
 
-            rightHandInteractor.StartManualInteraction(selectInteractable);
+            handInteractor.StartManualInteraction(selectInteractable);
             return true;
         }
 

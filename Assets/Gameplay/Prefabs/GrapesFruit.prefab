@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &6217547416534770028
+--- !u!1 &3421991243510059592
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,50 +8,50 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 6929181263989932611}
-  - component: {fileID: 3417339840952006778}
-  - component: {fileID: 7752007247694353710}
-  - component: {fileID: 6779497105639790370}
-  - component: {fileID: 1145205166410242303}
-  - component: {fileID: 8093500810644547316}
-  - component: {fileID: 878871337026487626}
+  - component: {fileID: 4075411230504502391}
+  - component: {fileID: 3941795956350074437}
+  - component: {fileID: 7329078810259982053}
+  - component: {fileID: 6833620048961362867}
+  - component: {fileID: 2974010452939715036}
+  - component: {fileID: 921240574078463106}
+  - component: {fileID: 6172377181335269600}
   m_Layer: 0
-  m_Name: OrangeFruit
+  m_Name: GrapesFruit
   m_TagString: Fruit
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &6929181263989932611
+--- !u!4 &4075411230504502391
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6217547416534770028}
+  m_GameObject: {fileID: 3421991243510059592}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2, y: 60, z: 0}
+  m_LocalPosition: {x: 0, y: 60, z: 0}
   m_LocalScale: {x: 5.2, y: 5.2, z: 5.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &3417339840952006778
+--- !u!33 &3941795956350074437
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6217547416534770028}
-  m_Mesh: {fileID: 2974485334038010973, guid: 191be90c64c24964796d93d39adbb355, type: 3}
---- !u!23 &7752007247694353710
+  m_GameObject: {fileID: 3421991243510059592}
+  m_Mesh: {fileID: 5892561577408024800, guid: 587147661d8aba648888207ddf28bf7c, type: 3}
+--- !u!23 &7329078810259982053
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6217547416534770028}
+  m_GameObject: {fileID: 3421991243510059592}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -94,13 +94,13 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &6779497105639790370
+--- !u!64 &6833620048961362867
 MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6217547416534770028}
+  m_GameObject: {fileID: 3421991243510059592}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -115,14 +115,14 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 1
   m_CookingOptions: 30
-  m_Mesh: {fileID: 2974485334038010973, guid: 191be90c64c24964796d93d39adbb355, type: 3}
---- !u!54 &1145205166410242303
+  m_Mesh: {fileID: 5892561577408024800, guid: 587147661d8aba648888207ddf28bf7c, type: 3}
+--- !u!54 &2974010452939715036
 Rigidbody:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6217547416534770028}
+  m_GameObject: {fileID: 3421991243510059592}
   serializedVersion: 5
   m_Mass: 1
   m_LinearDamping: 0
@@ -143,37 +143,37 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 2
---- !u!114 &8093500810644547316
+--- !u!114 &921240574078463106
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6217547416534770028}
+  m_GameObject: {fileID: 3421991243510059592}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fa5bcb1594e71914c81e29413e1c6e03, type: 3}
-  m_Name: OrangeFruit
+  m_Name: GrapesFruit
   m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Spawning.SpawnedObject
   missedYThreshold: 42
   sourcePrefab: {fileID: 0}
-  cutSurfaceMaterial: {fileID: 2100000, guid: ea3274aba4dab5742b8d40921f2fb94e, type: 2}
+  cutSurfaceMaterial: {fileID: 2100000, guid: c435b94de71ace542877543573c260b7, type: 2}
   sliceHalfLifetime: 4
   sliceSeparationImpulse: 2.5
   sliceForwardImpulse: 0.4
   sliceUpwardImpulse: 0.6
   sliceHalfOffset: 0.05
---- !u!114 &878871337026487626
+--- !u!114 &6172377181335269600
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6217547416534770028}
+  m_GameObject: {fileID: 3421991243510059592}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eed099ce6f11f9b47893eca4a98845e2, type: 3}
-  m_Name: OrangeFruit
+  m_Name: GrapesFruit
   m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Spawning.FruitData
-  fruitType: 2
-  pointValue: 4
+  fruitType: 5
+  pointValue: 5
