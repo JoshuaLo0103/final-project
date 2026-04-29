@@ -45,6 +45,10 @@ namespace BladeFrenzy.Gameplay.Core
         [Header("Juicy Feedback")]
         [SerializeField] private float scorePunchScale = 1.28f;
         [SerializeField] private float scorePunchDuration = 0.22f;
+        [SerializeField] private AudioClip comboChimeClip;
+        [SerializeField, Range(0f, 1f)] private float comboChimeVolume = 1f;
+        [SerializeField] private float comboChimeMinDistance = 8f;
+        [SerializeField] private float comboChimeMaxDistance = 30f;
 
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
@@ -64,6 +68,8 @@ namespace BladeFrenzy.Gameplay.Core
         private Coroutine _scorePunchRoutine;
         private Vector3 _scoreTextBaseScale = Vector3.one;
         private bool _hasScoreTextBaseScale;
+        private AudioSource _comboChimeSource;
+        private static AudioClip s_generatedComboChime;
 
         private void Awake()
         {
@@ -328,6 +334,7 @@ namespace BladeFrenzy.Gameplay.Core
                 return;
 
             SetStatus($"Combo tier up: {eventArgs.Multiplier}x", 1.5f);
+            PlayComboChime(eventArgs.Multiplier);
         }
 
         private void HandleHighScoreBeaten(HighScoreBeatenEventArgs eventArgs)
@@ -503,6 +510,74 @@ namespace BladeFrenzy.Gameplay.Core
         private void EnsureFeedbackElements()
         {
             CaptureScoreTextBaseScale();
+            EnsureComboChimeSource();
+        }
+
+        private void EnsureComboChimeSource()
+        {
+            if (scoreboardCanvas == null)
+                return;
+
+            if (_comboChimeSource == null)
+            {
+                _comboChimeSource = scoreboardCanvas.GetComponent<AudioSource>();
+                if (_comboChimeSource == null)
+                    _comboChimeSource = scoreboardCanvas.gameObject.AddComponent<AudioSource>();
+            }
+
+            _comboChimeSource.playOnAwake = false;
+            _comboChimeSource.spatialBlend = 1f;
+            _comboChimeSource.spatialize = false;
+            _comboChimeSource.dopplerLevel = 0f;
+            _comboChimeSource.rolloffMode = AudioRolloffMode.Linear;
+            _comboChimeSource.minDistance = Mathf.Max(0.1f, comboChimeMinDistance);
+            _comboChimeSource.maxDistance = Mathf.Max(_comboChimeSource.minDistance, comboChimeMaxDistance);
+            _comboChimeSource.volume = comboChimeVolume;
+            _comboChimeSource.bypassReverbZones = true;
+        }
+
+        private void PlayComboChime(int multiplier)
+        {
+            EnsureComboChimeSource();
+
+            if (_comboChimeSource == null)
+                return;
+
+            AudioClip clip = comboChimeClip != null ? comboChimeClip : GetGeneratedComboChime();
+            if (clip == null)
+                return;
+
+            _comboChimeSource.pitch = Mathf.Clamp(0.92f + (multiplier - 2) * 0.08f, 0.8f, 1.24f);
+            _comboChimeSource.PlayOneShot(clip, comboChimeVolume);
+        }
+
+        private static AudioClip GetGeneratedComboChime()
+        {
+            if (s_generatedComboChime != null)
+                return s_generatedComboChime;
+
+            const int sampleRate = 44100;
+            const float lengthSeconds = 0.42f;
+            const float frequencyA = 659.25f;
+            const float frequencyB = 987.77f;
+
+            int sampleCount = Mathf.CeilToInt(sampleRate * lengthSeconds);
+            float[] samples = new float[sampleCount];
+
+            for (int index = 0; index < sampleCount; index++)
+            {
+                float time = index / (float)sampleRate;
+                float attack = 1f - Mathf.Exp(-36f * time);
+                float decay = Mathf.Exp(-7.5f * time);
+                float envelope = attack * decay;
+                float toneA = Mathf.Sin(2f * Mathf.PI * frequencyA * time);
+                float toneB = Mathf.Sin(2f * Mathf.PI * frequencyB * time);
+                samples[index] = (toneA * 0.62f + toneB * 0.38f) * envelope * 0.32f;
+            }
+
+            s_generatedComboChime = AudioClip.Create("Generated Combo Chime", sampleCount, 1, sampleRate, false);
+            s_generatedComboChime.SetData(samples, 0);
+            return s_generatedComboChime;
         }
 
         private void CaptureScoreTextBaseScale()
