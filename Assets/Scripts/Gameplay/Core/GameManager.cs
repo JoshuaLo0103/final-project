@@ -82,7 +82,11 @@ namespace BladeFrenzy.Gameplay.Core
 
         public void RestartRun()
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            if (spawnManager == null)
+                spawnManager = FindFirstObjectByType<SpawnManager>();
+
+            spawnManager?.ResetSpawnedObjects();
+            StartRun();
         }
 
         public void QuitGame()

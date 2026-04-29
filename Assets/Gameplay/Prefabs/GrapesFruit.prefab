@@ -158,6 +158,7 @@ MonoBehaviour:
   missedYThreshold: 42
   sourcePrefab: {fileID: 0}
   cutSurfaceMaterial: {fileID: 2100000, guid: 3a18b69960d6c7a4392f1b7a29d8b24b, type: 2}
+  cutSurfaceMaterial: {fileID: 2100000, guid: c435b94de71ace542877543573c260b7, type: 2}
   sliceHalfLifetime: 4
   sliceSeparationImpulse: 2.5
   sliceForwardImpulse: 0.4

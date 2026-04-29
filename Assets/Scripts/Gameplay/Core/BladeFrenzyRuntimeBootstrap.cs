@@ -1,4 +1,5 @@
 using UnityEngine;
+using BladeFrenzy.Gameplay.Spawning;
 
 namespace BladeFrenzy.Gameplay.Core
 {
@@ -16,6 +17,7 @@ namespace BladeFrenzy.Gameplay.Core
             EnsureComponent<SliceParticleBurst>(runtimeRoot);
             EnsureComponent<SliceSoundEffect>(runtimeRoot);
             EnsureComponent<SwordAutoEquip>(runtimeRoot);
+            EnsureComponent<StarCopierShrine>(runtimeRoot);
         }
 
         private static GameObject ResolveRuntimeRoot()

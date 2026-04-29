@@ -4,11 +4,14 @@ namespace BladeFrenzy.Gameplay.Spawning
 {
     public enum FruitType
     {
-        Apple,
-        Banana,
-        Orange,
-        Watermelon,
-        Bomb
+        Apple = 0,
+        Banana = 1,
+        Orange = 2,
+        Watermelon = 3,
+        Bomb = 4,
+        Grapes = 5,
+        Pineapple = 6,
+        Cherry = 7
     }
 
     public class FruitData : MonoBehaviour
