@@ -12,6 +12,8 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private float emissionBoost = 6f;
         [SerializeField] private bool autoCreateMarkerIfMissing = true;
         [SerializeField] private float markerSize = 0.5f;
+        [SerializeField] private float markerVerticalOffset = 1.4f;
+        [SerializeField] private float colorShiftPerTrigger = 0.12f;
 
         private readonly Dictionary<Transform, Coroutine> _activeFlashes = new();
         private readonly Dictionary<Transform, Vector3> _baseScales = new();
@@ -19,6 +21,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         private readonly Dictionary<Renderer, Color> _baseColors = new();
         private readonly Dictionary<Renderer, Color> _baseEmissionColors = new();
         private MaterialPropertyBlock _propertyBlock;
+        private float _currentHue = 0.58f;
 
         private void Awake()
         {
@@ -32,6 +35,7 @@ namespace BladeFrenzy.Gameplay.Spawning
             if (_propertyBlock == null)
                 _propertyBlock = new MaterialPropertyBlock();
 
+            AdvanceFlashColor();
             EnsureMarker(spawnPoint);
 
             Transform flashTarget = _markerRoots.TryGetValue(spawnPoint, out Transform markerRoot) && markerRoot != null
@@ -66,6 +70,8 @@ namespace BladeFrenzy.Gameplay.Spawning
             if (!autoCreateMarkerIfMissing)
                 return;
 
+            markerVerticalOffset = Mathf.Max(markerVerticalOffset, 1.25f);
+
             Transform markerTransform = spawnPoint.Find("SpawnFlashMarker");
             GameObject marker;
             if (markerTransform != null)
@@ -84,7 +90,7 @@ namespace BladeFrenzy.Gameplay.Spawning
             }
 
             marker.transform.localScale = Vector3.one * markerSize;
-            marker.transform.localPosition = Vector3.up * 0.12f;
+            marker.transform.localPosition = Vector3.up * markerVerticalOffset;
             _markerRoots[spawnPoint] = marker.transform;
 
             Collider markerCollider = marker.GetComponent<Collider>();
@@ -116,6 +122,17 @@ namespace BladeFrenzy.Gameplay.Spawning
                     markerMaterial.SetColor("_EmissionColor", new Color(0.25f, 0.45f, 1f, 1f));
                 markerRenderer.sharedMaterial = markerMaterial;
             }
+        }
+
+        private void AdvanceFlashColor()
+        {
+            _currentHue += colorShiftPerTrigger;
+            if (_currentHue > 1f)
+                _currentHue -= 1f;
+
+            Color shifted = Color.HSVToRGB(_currentHue, 0.9f, 1f);
+            shifted.a = 1f;
+            flashColor = shifted;
         }
 
         private IEnumerator FlashRoutine(Transform spawnPoint, Transform flashTarget)

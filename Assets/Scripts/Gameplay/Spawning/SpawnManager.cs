@@ -27,7 +27,8 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private float upwardBoost = 2.5f;
         [SerializeField] private float targetSpread = 1.1f;
         [SerializeField] private float torqueStrength = 7f;
-        [SerializeField] private float maxReachDistance = 0.25f;
+        [SerializeField] private float spawnPointGapOffset = 0.2f;
+        [SerializeField] private float maxReachDistance = 0.15f;
         [SerializeField] private float swordReachPadding = 0.18f;
         [SerializeField] private float minimumReachFloor = 0.45f;
         [SerializeField] private Vector2 verticalTargetOffsetRange = new(-0.12f, 0.32f);
@@ -184,17 +185,34 @@ namespace BladeFrenzy.Gameplay.Spawning
             spawnPointFlashFeedback?.Trigger(spawnPoint);
 
             Vector3 target = ResolveDynamicTargetPoint();
+            Vector3 spawnPosition = ResolveSpawnPosition(spawnPoint, target);
 
-            Vector3 launchDirection = (target - spawnPoint.position).normalized;
+            Vector3 launchDirection = (target - spawnPosition).normalized;
             Vector3 velocity = launchDirection * launchSpeed + Vector3.up * upwardBoost;
             Vector3 angularVelocity = Random.insideUnitSphere * torqueStrength;
 
             instance.Launch(
                 this,
-                spawnPoint.position,
+                spawnPosition,
                 Random.rotation,
                 velocity,
                 angularVelocity);
+        }
+
+        private Vector3 ResolveSpawnPosition(Transform spawnPoint, Vector3 target)
+        {
+            if (spawnPoint == null)
+                return target;
+
+            Vector3 spawnPosition = spawnPoint.position;
+            if (spawnPointGapOffset <= 0f)
+                return spawnPosition;
+
+            Vector3 towardTarget = (target - spawnPosition).normalized;
+            if (towardTarget.sqrMagnitude < 0.0001f)
+                return spawnPosition;
+
+            return spawnPosition + towardTarget * spawnPointGapOffset;
         }
 
         private Vector3 ResolveDynamicTargetPoint()
