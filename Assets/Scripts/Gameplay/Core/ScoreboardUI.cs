@@ -24,6 +24,7 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private GameObject gameOverPanel;
         [SerializeField] private TMP_Text finalScoreText;
         [SerializeField] private TMP_Text finalComboText;
+        [SerializeField] private TMP_Text finalHighScoreText;
         [SerializeField] private TMP_Text statusText;
         [SerializeField] private TMP_Text comboPopupText;
 
@@ -64,6 +65,11 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField, Range(0f, 1f)] private float gameOverVolume = 1f;
         [SerializeField] private float gameOverMinDistance = 14f;
         [SerializeField] private float gameOverMaxDistance = 60f;
+        [SerializeField] private float gameOverPanelScaleDuration = 0.5f;
+        [SerializeField] private float gameOverStatCountDuration = 0.75f;
+        [SerializeField] private float gameOverStatStaggerDelay = 0.18f;
+        [SerializeField] private float gameOverStatHighlightScale = 1.35f;
+        [SerializeField] private Color gameOverStatHighlightColor = new(1f, 0.86f, 0.32f, 1f);
 
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
@@ -94,6 +100,9 @@ namespace BladeFrenzy.Gameplay.Core
         private bool _hasPanelOriginalColor;
         private Coroutine _highScoreFlashRoutine;
         private Coroutine _highScorePopupRoutine;
+        private Coroutine _gameOverIntroRoutine;
+        private Vector3 _gameOverPanelOriginalScale = Vector3.one;
+        private bool _hasGameOverPanelScale;
 
         private void Awake()
         {
@@ -277,18 +286,19 @@ namespace BladeFrenzy.Gameplay.Core
             RectTransform panelRect = gameOverPanel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(680f, 210f);
-            panelRect.anchoredPosition = new Vector2(0f, 120f);
+            panelRect.sizeDelta = new Vector2(680f, 280f);
+            panelRect.anchoredPosition = new Vector2(0f, 140f);
 
             Image panelImage = gameOverPanel.GetComponent<Image>();
             panelImage.color = new Color(0.11f, 0.04f, 0.04f, 0.92f);
 
             CreateText("GameOverTitle", gameOverPanel.transform, "RUN OVER", 38, FontStyles.Bold, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -30f), new Vector2(560f, 48f), out _);
-            CreateText("FinalScoreText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -82f), new Vector2(540f, 34f), out finalScoreText);
-            CreateText("FinalComboText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -116f), new Vector2(540f, 34f), out finalComboText);
+            CreateText("FinalScoreText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -86f), new Vector2(540f, 34f), out finalScoreText);
+            CreateText("FinalComboText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -122f), new Vector2(540f, 34f), out finalComboText);
+            CreateText("FinalHighScoreText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -158f), new Vector2(540f, 34f), out finalHighScoreText);
 
-            CreateButton("RestartButton", gameOverPanel.transform, "Restart", new Vector2(-110f, -162f), () => _gameManager?.RestartRun());
-            CreateButton("QuitButton", gameOverPanel.transform, "Quit", new Vector2(110f, -162f), () => _gameManager?.QuitGame());
+            CreateButton("RestartButton", gameOverPanel.transform, "Restart", new Vector2(-110f, -218f), () => _gameManager?.RestartRun());
+            CreateButton("QuitButton", gameOverPanel.transform, "Quit", new Vector2(110f, -218f), () => _gameManager?.QuitGame());
         }
 
         private void RefreshHud()
@@ -317,16 +327,239 @@ namespace BladeFrenzy.Gameplay.Core
             if (gameOverPanel == null)
                 return;
 
+            EnsureGameOverStatLayout();
+            CaptureGameOverPanelScale();
+
+            if (_gameOverIntroRoutine != null)
+            {
+                StopCoroutine(_gameOverIntroRoutine);
+                _gameOverIntroRoutine = null;
+            }
+
             gameOverPanel.SetActive(visible);
+
             if (!visible)
+            {
+                if (_hasGameOverPanelScale)
+                    gameOverPanel.transform.localScale = _gameOverPanelOriginalScale;
+                if (finalScoreText != null)
+                    finalScoreText.text = string.Empty;
+                if (finalComboText != null)
+                    finalComboText.text = string.Empty;
+                if (finalHighScoreText != null)
+                    finalHighScoreText.text = string.Empty;
                 return;
+            }
 
             if (statusText != null)
                 statusText.text = reason;
+
             if (finalScoreText != null)
-                finalScoreText.text = $"Final Score: {snapshot.Score}    High Score: {snapshot.HighScore}";
+                finalScoreText.text = "Final Score: 0";
             if (finalComboText != null)
-                finalComboText.text = $"Max Combo: {snapshot.MaxCombo}    Final Multiplier: {snapshot.Multiplier}x";
+                finalComboText.text = "Max Combo: 0";
+            if (finalHighScoreText != null)
+                finalHighScoreText.text = "High Score: 0";
+
+            _gameOverIntroRoutine = StartCoroutine(AnimateGameOverIntro(snapshot));
+        }
+
+        private void CaptureGameOverPanelScale()
+        {
+            if (_hasGameOverPanelScale || gameOverPanel == null)
+                return;
+
+            Vector3 current = gameOverPanel.transform.localScale;
+            _gameOverPanelOriginalScale = current.sqrMagnitude > 0.0001f ? current : Vector3.one;
+            _hasGameOverPanelScale = true;
+        }
+
+        private void EnsureGameOverStatLayout()
+        {
+            if (gameOverPanel == null)
+                return;
+
+            Transform panelTransform = gameOverPanel.transform;
+
+            if (finalScoreText == null)
+            {
+                Transform existing = panelTransform.Find("FinalScoreText");
+                if (existing != null)
+                    finalScoreText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (finalComboText == null)
+            {
+                Transform existing = panelTransform.Find("FinalComboText");
+                if (existing != null)
+                    finalComboText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (finalHighScoreText == null)
+            {
+                Transform existing = panelTransform.Find("FinalHighScoreText");
+                if (existing != null)
+                    finalHighScoreText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (finalHighScoreText == null)
+            {
+                CreateText(
+                    "FinalHighScoreText",
+                    panelTransform,
+                    string.Empty,
+                    26,
+                    FontStyles.Normal,
+                    TextAlignmentOptions.Center,
+                    new Vector2(0.5f, 1f),
+                    new Vector2(0.5f, 1f),
+                    new Vector2(0f, -158f),
+                    new Vector2(540f, 34f),
+                    out finalHighScoreText);
+            }
+
+            RectTransform panelRect = (RectTransform)panelTransform;
+            const float requiredHeight = 280f;
+            if (panelRect.sizeDelta.y < requiredHeight)
+            {
+                Vector2 size = panelRect.sizeDelta;
+                size.y = requiredHeight;
+                panelRect.sizeDelta = size;
+            }
+
+            SetTopAnchoredY(finalScoreText, -86f);
+            SetTopAnchoredY(finalComboText, -122f);
+            SetTopAnchoredY(finalHighScoreText, -158f);
+            SetTopAnchoredY(panelTransform.Find("RestartButton") as RectTransform, -218f);
+            SetTopAnchoredY(panelTransform.Find("QuitButton") as RectTransform, -218f);
+        }
+
+        private static void SetTopAnchoredY(TMP_Text text, float y)
+        {
+            if (text == null)
+                return;
+            SetTopAnchoredY((RectTransform)text.transform, y);
+        }
+
+        private static void SetTopAnchoredY(RectTransform rect, float y)
+        {
+            if (rect == null)
+                return;
+            Vector2 pos = rect.anchoredPosition;
+            pos.y = y;
+            rect.anchoredPosition = pos;
+        }
+
+        private IEnumerator AnimateGameOverIntro(ScoreSnapshot snapshot)
+        {
+            Transform panelTransform = gameOverPanel.transform;
+            Vector3 targetScale = _hasGameOverPanelScale ? _gameOverPanelOriginalScale : Vector3.one;
+
+            float scaleDuration = Mathf.Max(0.05f, gameOverPanelScaleDuration);
+            float elapsed = 0f;
+            panelTransform.localScale = Vector3.zero;
+
+            while (elapsed < scaleDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = EaseOutBack(Mathf.Clamp01(elapsed / scaleDuration));
+                panelTransform.localScale = Vector3.LerpUnclamped(Vector3.zero, targetScale, t);
+                yield return null;
+            }
+            panelTransform.localScale = targetScale;
+
+            if (gameOverStatStaggerDelay > 0f)
+                yield return new WaitForSeconds(gameOverStatStaggerDelay);
+
+            if (finalScoreText != null)
+                yield return CountUpStat(
+                    finalScoreText,
+                    snapshot.Score,
+                    value => finalScoreText.text = $"Final Score: {value}");
+
+            if (gameOverStatStaggerDelay > 0f)
+                yield return new WaitForSeconds(gameOverStatStaggerDelay);
+
+            if (finalComboText != null)
+                yield return CountUpStat(
+                    finalComboText,
+                    snapshot.MaxCombo,
+                    value => finalComboText.text = $"Max Combo: {value}");
+
+            if (gameOverStatStaggerDelay > 0f)
+                yield return new WaitForSeconds(gameOverStatStaggerDelay);
+
+            if (finalHighScoreText != null)
+                yield return CountUpStat(
+                    finalHighScoreText,
+                    snapshot.HighScore,
+                    value => finalHighScoreText.text = $"High Score: {value}");
+
+            _gameOverIntroRoutine = null;
+        }
+
+        private IEnumerator CountUpStat(TMP_Text statText, int target, System.Action<int> apply)
+        {
+            float duration = Mathf.Max(0.05f, gameOverStatCountDuration);
+            Transform statTransform = statText.transform;
+            Vector3 baseScale = statTransform.localScale;
+            Color baseColor = statText.color;
+            Vector3 peakScale = baseScale * Mathf.Max(1f, gameOverStatHighlightScale);
+            float scaleInPhase = Mathf.Min(0.18f, duration * 0.25f);
+            float scaleOutPhase = Mathf.Min(0.22f, duration * 0.3f);
+            float holdEnd = Mathf.Max(scaleInPhase, duration - scaleOutPhase);
+
+            float elapsed = 0f;
+            int lastValue = -1;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float clamped = Mathf.Clamp01(elapsed / duration);
+                int value = Mathf.RoundToInt(Mathf.LerpUnclamped(0f, target, EaseOutCubic(clamped)));
+                if (value != lastValue)
+                {
+                    apply(value);
+                    lastValue = value;
+                }
+
+                Vector3 currentScale;
+                float colorBlend;
+                if (elapsed <= scaleInPhase)
+                {
+                    float t = EaseOutCubic(Mathf.Clamp01(elapsed / scaleInPhase));
+                    currentScale = Vector3.LerpUnclamped(baseScale, peakScale, t);
+                    colorBlend = t;
+                }
+                else if (elapsed >= holdEnd)
+                {
+                    float t = EaseOutCubic(Mathf.Clamp01((elapsed - holdEnd) / Mathf.Max(0.0001f, scaleOutPhase)));
+                    currentScale = Vector3.LerpUnclamped(peakScale, baseScale, t);
+                    colorBlend = 1f - t;
+                }
+                else
+                {
+                    currentScale = peakScale;
+                    colorBlend = 1f;
+                }
+
+                statTransform.localScale = currentScale;
+                statText.color = Color.LerpUnclamped(baseColor, gameOverStatHighlightColor, colorBlend);
+
+                yield return null;
+            }
+
+            apply(target);
+            statTransform.localScale = baseScale;
+            statText.color = baseColor;
+        }
+
+        private static float EaseOutBack(float value)
+        {
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            float inverted = value - 1f;
+            return 1f + c3 * inverted * inverted * inverted + c1 * inverted * inverted;
         }
 
         private void HandleRunStarted()
@@ -1096,6 +1329,15 @@ namespace BladeFrenzy.Gameplay.Core
 
             HideComboPopup();
             HideHighScoreCelebration();
+
+            if (_gameOverIntroRoutine != null)
+            {
+                StopCoroutine(_gameOverIntroRoutine);
+                _gameOverIntroRoutine = null;
+            }
+
+            if (gameOverPanel != null && _hasGameOverPanelScale)
+                gameOverPanel.transform.localScale = _gameOverPanelOriginalScale;
         }
 
         private static float EaseOutCubic(float value)
