@@ -23,6 +23,13 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private float bombGravityModifier = 0.12f;
         [SerializeField] private float bombBurstRadius = 0.22f;
 
+        private Material _particleMaterial;
+
+        private void Awake()
+        {
+            _particleMaterial = CreateParticleMaterial();
+        }
+
         private void OnEnable()
         {
             GameEvents.OnFruitSliced += HandleFruitSliced;
@@ -35,22 +42,35 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnBombHit -= HandleBombHit;
         }
 
+        private void OnDestroy()
+        {
+            if (_particleMaterial == null)
+                return;
+
+            if (Application.isPlaying)
+                Destroy(_particleMaterial);
+            else
+                DestroyImmediate(_particleMaterial);
+        }
+
         private void HandleFruitSliced(FruitSliceEventArgs eventArgs)
         {
             if (eventArgs.FruitData == null)
                 return;
 
+            FruitType fruitType = eventArgs.FruitData.FruitType;
+
             CreateBurst(
                 burstName: "SliceParticleBurst",
                 worldPosition: eventArgs.WorldPosition,
-                burstColor: ResolveFruitColor(eventArgs.FruitData.FruitType),
-                particleCount: fruitParticleCount,
+                burstColor: ResolveFruitColor(fruitType),
+                particleCount: ResolveFruitParticleCount(fruitType),
                 particleLifetime: fruitParticleLifetime,
-                particleSpeed: fruitParticleSpeed,
-                particleSize: fruitParticleSize,
+                particleSpeed: ResolveFruitParticleSpeed(fruitType),
+                particleSize: ResolveFruitParticleSize(fruitType),
                 sizeVariation: fruitSizeVariation,
                 gravityModifier: fruitGravityModifier,
-                burstRadius: fruitBurstRadius);
+                burstRadius: ResolveFruitBurstRadius(fruitType));
         }
 
         private void HandleBombHit(BombHitEventArgs eventArgs)
@@ -143,6 +163,7 @@ namespace BladeFrenzy.Gameplay.Core
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
             renderer.alignment = ParticleSystemRenderSpace.View;
             renderer.sortMode = ParticleSystemSortMode.Distance;
+            renderer.sharedMaterial = _particleMaterial;
 
             particleSystem.Emit(particleCount);
             particleSystem.Play();
@@ -155,16 +176,74 @@ namespace BladeFrenzy.Gameplay.Core
             return fruitType switch
             {
                 FruitType.Apple => new Color(0.82f, 0.12f, 0.16f),
-                FruitType.Banana => new Color(0.97f, 0.85f, 0.2f),
+                FruitType.Banana => new Color(1f, 0.94f, 0.08f),
                 FruitType.Orange => new Color(0.96f, 0.48f, 0.08f),
                 FruitType.Watermelon => new Color(0.9f, 0.18f, 0.27f),
                 _ => Color.white
             };
         }
 
+        private int ResolveFruitParticleCount(FruitType fruitType)
+        {
+            return fruitType == FruitType.Banana
+                ? Mathf.RoundToInt(fruitParticleCount * 1.6f)
+                : fruitParticleCount;
+        }
+
+        private float ResolveFruitParticleSpeed(FruitType fruitType)
+        {
+            return fruitType == FruitType.Banana
+                ? fruitParticleSpeed * 1.12f
+                : fruitParticleSpeed;
+        }
+
+        private float ResolveFruitParticleSize(FruitType fruitType)
+        {
+            return fruitType == FruitType.Banana
+                ? fruitParticleSize * 1.35f
+                : fruitParticleSize;
+        }
+
+        private float ResolveFruitBurstRadius(FruitType fruitType)
+        {
+            return fruitType == FruitType.Banana
+                ? fruitBurstRadius * 1.65f
+                : fruitBurstRadius;
+        }
+
         private static Color ResolveBombColor()
         {
             return new Color(0.75f, 0.18f, 0.04f);
+        }
+
+        private static Material CreateParticleMaterial()
+        {
+            Shader shader =
+                Shader.Find("Universal Render Pipeline/Particles/Unlit") ??
+                Shader.Find("Universal Render Pipeline/Unlit") ??
+                Shader.Find("Sprites/Default") ??
+                Shader.Find("Legacy Shaders/Particles/Alpha Blended");
+
+            if (shader == null)
+                return null;
+
+            Material material = new Material(shader)
+            {
+                name = "SliceParticleBurst_Runtime",
+                hideFlags = HideFlags.HideAndDontSave,
+                renderQueue = 3000
+            };
+
+            SetMaterialColor(material, "_BaseColor", Color.white);
+            SetMaterialColor(material, "_TintColor", Color.white);
+            SetMaterialColor(material, "_Color", Color.white);
+            return material;
+        }
+
+        private static void SetMaterialColor(Material material, string propertyName, Color color)
+        {
+            if (material.HasProperty(propertyName))
+                material.SetColor(propertyName, color);
         }
     }
 }
