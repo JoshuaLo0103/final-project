@@ -15,6 +15,9 @@ GameObject:
   - component: {fileID: 1725205139986374309}
   - component: {fileID: 5111852028975208726}
   - component: {fileID: 7697919470778374880}
+  - component: {fileID: 5350094528680234640}
+  - component: {fileID: 3362340778197539569}
+  - component: {fileID: 3705246180006202094}
   m_Layer: 0
   m_Name: PlayerSword
   m_TagString: Untagged
@@ -286,9 +289,72 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 176191090b1a8534baa84f493d5069f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Scoring.SwordHitScorer
-  scoreManager: {fileID: 0}
-  defaultFruitPoints: 1
-  defaultBombPenalty: 1
+  minimumSliceSpeed: 2.75
+  localBladeAxis: {x: 0, y: 0, z: 1}
+  minimumPlaneNormalMagnitude: 0.2
+--- !u!114 &5350094528680234640
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2100322649968495225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ee304f4143b3744c9d3e32dc88328ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Scoring.SwordTrailController
+  trailAnchor: {fileID: 0}
+  fallbackLocalAnchorPosition: {x: 0, y: 0, z: 2.25}
+  minVisibleSpeed: 1.25
+  fullTrailSpeed: 7.5
+  easeResponsiveness: 14
+  minLifetime: 0.035
+  maxLifetime: 0.22
+  minWidth: 0.015
+  maxWidth: 0.12
+  trailColor: {r: 0.25, g: 0.9, b: 1, a: 1}
+  trailCoreColor: {r: 1, g: 1, b: 1, a: 1}
+  maxAlpha: 0.85
+--- !u!114 &3362340778197539569
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2100322649968495225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36e341f960516354e93b6504e041706f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Scoring.SwordPowerSlashController
+  activeDuration: 1
+  scaleMultiplier: 1.65
+  growEaseDuration: 0.08
+  shrinkEaseDuration: 0.16
+  cooldownDuration: 0.15
+--- !u!114 &3705246180006202094
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2100322649968495225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef8a1e1c6a01ef14aabbcbdf821cf37a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BladeFrenzy.Gameplay.Scoring.SwordVelocitySoundController
+  highVelocityClip: {fileID: 8300000, guid: 2614f2fcef9afb9458e6720dcdd8a8f2, type: 3}
+  fallbackResourcesClipPath: Audio/22_Slash_04
+  highVelocityThreshold: 6.5
+  rearmVelocityThreshold: 3.5
+  cooldown: 0.22
+  volume: 0.75
+  pitchRange: {x: 0.94, y: 1.08}
+  spatialBlend: 0.65
+  minDistance: 1
+  maxDistance: 8
 --- !u!1 &3874708408050069295
 GameObject:
   m_ObjectHideFlags: 0
