@@ -16,6 +16,7 @@ namespace BladeFrenzy.Gameplay.Core
             EnsureComponent<ScoreboardUI>(runtimeRoot);
             EnsureComponent<SliceParticleBurst>(runtimeRoot);
             EnsureComponent<SliceSoundEffect>(runtimeRoot);
+            EnsureComponent<MissWhooshSoundEffect>(runtimeRoot);
             EnsureComponent<SwordAutoEquip>(runtimeRoot);
             EnsureComponent<StarCopierShrine>(runtimeRoot);
         }
