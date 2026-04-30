@@ -146,9 +146,16 @@ namespace BladeFrenzy.Gameplay.Spawning
                 return;
 
             if (_fruitData.IsBomb)
+            {
                 GameEvents.RaiseBombHit(_fruitData, transform.position);
+            }
             else
+            {
+                HealingFruitPickup healingFruitPickup = GetComponent<HealingFruitPickup>();
+                healingFruitPickup?.RestoreLife();
+
                 GameEvents.RaiseFruitSliced(_fruitData, transform.position);
+            }
 
             TryReturnToPool(false);
         }
