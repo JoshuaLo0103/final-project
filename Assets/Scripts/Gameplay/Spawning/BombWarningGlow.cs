@@ -14,12 +14,20 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private float baseLightIntensity = 1.2f;
         [SerializeField] private float pulseLightIntensity = 4.5f;
         [SerializeField] private float warningLightRange = 2.3f;
+        [SerializeField] private float farRingRadius = 0.38f;
+        [SerializeField] private float nearRingRadius = 0.7f;
+        [SerializeField] private float ringWidth = 0.07f;
+        [SerializeField] private float ringPulseWidth = 0.11f;
+        [SerializeField] private float ringGrowStartDistance = 6f;
+        [SerializeField] private float ringGrowEndDistance = 1.1f;
 
         private readonly System.Collections.Generic.Dictionary<Renderer, Color> _baseColors = new();
         private readonly System.Collections.Generic.Dictionary<Renderer, Color> _baseEmissionColors = new();
         private Renderer[] _renderers;
         private MaterialPropertyBlock _propertyBlock;
         private Light _warningLight;
+        private LineRenderer _warningRing;
+        private Material _warningRingMaterial;
         private Vector3 _baseScale;
         private bool _isGlowing;
 
@@ -44,6 +52,7 @@ namespace BladeFrenzy.Gameplay.Spawning
             if (_warningLight != null)
                 _warningLight.intensity = lightIntensity;
 
+            UpdateWarningRing(pulse);
             transform.localScale = _baseScale * (1f + pulse * sizePulseStrength);
         }
 
@@ -54,8 +63,11 @@ namespace BladeFrenzy.Gameplay.Spawning
 
             _baseScale = transform.localScale;
             EnsureWarningLight();
+            EnsureWarningRing();
             if (_warningLight != null)
                 _warningLight.enabled = true;
+            if (_warningRing != null)
+                _warningRing.gameObject.SetActive(true);
 
             _isGlowing = true;
         }
@@ -69,6 +81,8 @@ namespace BladeFrenzy.Gameplay.Spawning
             transform.localScale = _baseScale;
             if (_warningLight != null)
                 _warningLight.enabled = false;
+            if (_warningRing != null)
+                _warningRing.gameObject.SetActive(false);
 
             RestoreRendererState();
         }
@@ -101,6 +115,118 @@ namespace BladeFrenzy.Gameplay.Spawning
             _warningLight.intensity = baseLightIntensity;
             _warningLight.shadows = LightShadows.None;
             _warningLight.enabled = false;
+        }
+
+        private void EnsureWarningRing()
+        {
+            if (_warningRing != null)
+                return;
+
+            Transform existingRing = transform.Find("BombWarningRing");
+            GameObject ringObject;
+            if (existingRing != null)
+            {
+                ringObject = existingRing.gameObject;
+            }
+            else
+            {
+                ringObject = new GameObject("BombWarningRing");
+                ringObject.transform.SetParent(transform, false);
+                ringObject.transform.localPosition = Vector3.zero;
+                ringObject.transform.localRotation = Quaternion.identity;
+            }
+
+            _warningRing = ringObject.GetComponent<LineRenderer>();
+            if (_warningRing == null)
+                _warningRing = ringObject.AddComponent<LineRenderer>();
+
+            _warningRing.loop = true;
+            _warningRing.useWorldSpace = false;
+            _warningRing.positionCount = 64;
+            _warningRing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _warningRing.receiveShadows = false;
+            _warningRingMaterial = CreateRingMaterial();
+            _warningRing.sharedMaterial = _warningRingMaterial;
+            WriteRingPositions(farRingRadius);
+            ringObject.SetActive(false);
+        }
+
+        private void UpdateWarningRing(float pulse)
+        {
+            if (_warningRing == null)
+                return;
+
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+                _warningRing.transform.rotation = mainCamera.transform.rotation;
+
+            float closeness = ResolvePlayerCloseness();
+            float radius = Mathf.Lerp(farRingRadius, nearRingRadius, closeness);
+            float width = Mathf.Lerp(ringWidth, ringPulseWidth, pulse);
+            float alpha = Mathf.Lerp(0.12f, 1f, pulse);
+            Color ringColor = new Color(warningColor.r, warningColor.g, warningColor.b, alpha);
+
+            WriteRingPositions(radius);
+            _warningRing.startWidth = width;
+            _warningRing.endWidth = width;
+            _warningRing.startColor = ringColor;
+            _warningRing.endColor = ringColor;
+            if (_warningRingMaterial != null)
+            {
+                _warningRingMaterial.color = ringColor;
+                if (_warningRingMaterial.HasProperty("_BaseColor"))
+                    _warningRingMaterial.SetColor("_BaseColor", ringColor);
+                if (_warningRingMaterial.HasProperty("_Color"))
+                    _warningRingMaterial.SetColor("_Color", ringColor);
+            }
+        }
+
+        private float ResolvePlayerCloseness()
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+                return 0f;
+
+            float distance = Vector3.Distance(transform.position, mainCamera.transform.position);
+            return Mathf.InverseLerp(ringGrowStartDistance, ringGrowEndDistance, distance);
+        }
+
+        private void WriteRingPositions(float radius)
+        {
+            for (int index = 0; index < _warningRing.positionCount; index++)
+            {
+                float angle = index / (float)_warningRing.positionCount * Mathf.PI * 2f;
+                Vector3 position = new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f);
+                _warningRing.SetPosition(index, position);
+            }
+        }
+
+        private Material CreateRingMaterial()
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null)
+                shader = Shader.Find("Sprites/Default");
+
+            Material material = shader != null
+                ? new Material(shader)
+                : new Material(Shader.Find("Sprites/Default"));
+
+            Color ringColor = new Color(warningColor.r, warningColor.g, warningColor.b, 1f);
+            material.color = ringColor;
+            if (material.HasProperty("_BaseColor"))
+                material.SetColor("_BaseColor", ringColor);
+            if (material.HasProperty("_Color"))
+                material.SetColor("_Color", ringColor);
+            if (material.HasProperty("_Surface"))
+                material.SetFloat("_Surface", 1f);
+            if (material.HasProperty("_AlphaClip"))
+                material.SetFloat("_AlphaClip", 0f);
+
+            material.SetOverrideTag("RenderType", "Transparent");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+            return material;
         }
 
         private void CacheRenderers()
