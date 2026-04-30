@@ -7,6 +7,8 @@ namespace BladeFrenzy.Gameplay.Core
     {
         [Header("Clip")]
         [SerializeField] private string resourcesClipPath = "Audio/22_Slash_04";
+        [SerializeField] private AudioClip fruitSliceClip;
+
         [SerializeField] private string bombResourcesClipPath = "Audio/Explosion 1";
 
         [Header("Spatial Audio")]
@@ -24,7 +26,7 @@ namespace BladeFrenzy.Gameplay.Core
 
         private void Awake()
         {
-            _slashClip = Resources.Load<AudioClip>(resourcesClipPath);
+            _slashClip = fruitSliceClip != null ? fruitSliceClip : Resources.Load<AudioClip>(resourcesClipPath);
             _bombClip = Resources.Load<AudioClip>(bombResourcesClipPath);
 
             _audioSource = GetComponent<AudioSource>();
@@ -42,7 +44,7 @@ namespace BladeFrenzy.Gameplay.Core
             _audioSource.dopplerLevel = 0f;
 
             if (_slashClip == null)
-                Debug.LogWarning($"SliceSoundEffect could not load clip at Resources/{resourcesClipPath}.");
+                Debug.LogWarning($"SliceSoundEffect could not load a fruit slice clip. Assign one directly or add a clip at Resources/{resourcesClipPath}.");
             if (_bombClip == null)
                 Debug.LogWarning($"SliceSoundEffect could not load bomb clip at Resources/{bombResourcesClipPath}.");
         }
