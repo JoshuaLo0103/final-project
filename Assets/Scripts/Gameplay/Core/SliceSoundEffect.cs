@@ -24,9 +24,9 @@ namespace BladeFrenzy.Gameplay.Core
         private AudioClip _bombClip;
         private AudioSource _audioSource;
 
-        private void Awake()
+private void Awake()
         {
-            _slashClip = ResolveClip(resourcesClipPath, "slash");
+            _slashClip = fruitSliceClip != null ? fruitSliceClip : ResolveClip(resourcesClipPath, "slash");
             _bombClip = ResolveClip(bombResourcesClipPath, "explosion");
 
             _audioSource = GetComponent<AudioSource>();
