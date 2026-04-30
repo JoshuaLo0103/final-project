@@ -13,6 +13,7 @@ namespace BladeFrenzy.Gameplay.Core
         public static event Action<FruitMissedEventArgs> OnFruitMissed;
         public static event Action<ScoreChangedEventArgs> OnScoreChanged;
         public static event Action<ComboTierChangedEventArgs> OnComboTierChanged;
+        public static event Action<DifficultyTierChangedEventArgs> OnDifficultyTierChanged;
         public static event Action<HighScoreBeatenEventArgs> OnHighScoreBeaten;
         public static event Action<LivesChangedEventArgs> OnLivesChanged;
         public static event Action OnLivesDepleted;
@@ -51,6 +52,11 @@ namespace BladeFrenzy.Gameplay.Core
         public static void RaiseComboTierChanged(int comboCount, int multiplier)
         {
             OnComboTierChanged?.Invoke(new ComboTierChangedEventArgs(comboCount, multiplier));
+        }
+
+        public static void RaiseDifficultyTierChanged(int tierIndex, string tierLabel)
+        {
+            OnDifficultyTierChanged?.Invoke(new DifficultyTierChangedEventArgs(tierIndex, tierLabel));
         }
 
         public static void RaiseScoreChanged(int score, int pointsAdded, int comboCount, int multiplier, Vector3 worldPosition)
@@ -108,6 +114,18 @@ namespace BladeFrenzy.Gameplay.Core
 
         public FruitData FruitData { get; }
         public Vector3 WorldPosition { get; }
+    }
+
+    public readonly struct DifficultyTierChangedEventArgs
+    {
+        public DifficultyTierChangedEventArgs(int tierIndex, string tierLabel)
+        {
+            TierIndex = tierIndex;
+            TierLabel = tierLabel;
+        }
+
+        public int TierIndex { get; }
+        public string TierLabel { get; }
     }
 
     public readonly struct ComboTierChangedEventArgs

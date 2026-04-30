@@ -68,6 +68,19 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private float gameOverPanelScaleDuration = 0.5f;
         [SerializeField] private float gameOverStatCountDuration = 0.75f;
         [SerializeField] private float gameOverStatStaggerDelay = 0.18f;
+        [SerializeField] private AudioClip[] difficultyTierClips = new AudioClip[4];
+        [SerializeField, Range(0f, 1.5f)] private float difficultyTierVolume = 1f;
+        [SerializeField] private float difficultyTierMinDistance = 10f;
+        [SerializeField] private float difficultyTierMaxDistance = 45f;
+        [SerializeField] private float difficultyTierPopupDuration = 1.8f;
+        [SerializeField] private float difficultyTierPopupSlideDistance = 480f;
+        [SerializeField] private Vector2 difficultyTierPopupAnchoredPosition = new(0f, -10f);
+        [SerializeField] private Vector2 difficultyTierPopupSize = new(900f, 150f);
+        [SerializeField] private float difficultyTierPopupFontSize = 110f;
+        [SerializeField] private Color difficultyTierEasyColor = new(0.6f, 0.95f, 0.7f, 1f);
+        [SerializeField] private Color difficultyTierMediumColor = new(0.95f, 0.9f, 0.4f, 1f);
+        [SerializeField] private Color difficultyTierHardColor = new(1f, 0.55f, 0.25f, 1f);
+        [SerializeField] private Color difficultyTierFrenzyColor = new(1f, 0.3f, 0.45f, 1f);
         [SerializeField] private float gameOverStatHighlightScale = 1.35f;
         [SerializeField] private Color gameOverStatHighlightColor = new(1f, 0.86f, 0.32f, 1f);
 
@@ -94,6 +107,10 @@ namespace BladeFrenzy.Gameplay.Core
         private static AudioClip s_generatedComboChime;
         private AudioSource _gameOverSource;
         private static AudioClip s_generatedGameOverSting;
+        private AudioSource _difficultyTierSource;
+        private static readonly AudioClip[] s_generatedDifficultyTierClips = new AudioClip[4];
+        private TMP_Text _difficultyTierPopupText;
+        private Coroutine _difficultyTierPopupRoutine;
         private TMP_Text _highScorePopupText;
         private Image _panelImage;
         private Color _panelOriginalColor;
@@ -136,6 +153,7 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnRunEnded += HandleRunEnded;
             GameEvents.OnScoreChanged += HandleScoreChanged;
             GameEvents.OnComboTierChanged += HandleComboTierChanged;
+            GameEvents.OnDifficultyTierChanged += HandleDifficultyTierChanged;
             GameEvents.OnHighScoreBeaten += HandleHighScoreBeaten;
             GameEvents.OnFruitMissed += HandleFruitMissed;
             GameEvents.OnLivesChanged += HandleLivesChanged;
@@ -147,6 +165,7 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnRunEnded -= HandleRunEnded;
             GameEvents.OnScoreChanged -= HandleScoreChanged;
             GameEvents.OnComboTierChanged -= HandleComboTierChanged;
+            GameEvents.OnDifficultyTierChanged -= HandleDifficultyTierChanged;
             GameEvents.OnHighScoreBeaten -= HandleHighScoreBeaten;
             GameEvents.OnFruitMissed -= HandleFruitMissed;
             GameEvents.OnLivesChanged -= HandleLivesChanged;
@@ -569,6 +588,7 @@ namespace BladeFrenzy.Gameplay.Core
             SetGameOverVisible(false, default, string.Empty);
             HideComboPopup();
             HideHighScoreCelebration();
+            HideDifficultyTierPopup();
         }
 
         private void HandleRunEnded(GameRunEndedEventArgs eventArgs)
@@ -596,6 +616,16 @@ namespace BladeFrenzy.Gameplay.Core
             SetStatus($"Combo tier up: {eventArgs.Multiplier}x", 1.5f);
             PlayComboChime(eventArgs.Multiplier);
             PlayComboPopup(eventArgs.Multiplier);
+        }
+
+        private void HandleDifficultyTierChanged(DifficultyTierChangedEventArgs eventArgs)
+        {
+            if (eventArgs.TierIndex <= 0)
+                return;
+
+            SetStatus($"Difficulty: {eventArgs.TierLabel}", 1.4f);
+            PlayDifficultyTierSound(eventArgs.TierIndex);
+            PlayDifficultyTierPopup(eventArgs.TierIndex, eventArgs.TierLabel);
         }
 
         private void HandleHighScoreBeaten(HighScoreBeatenEventArgs eventArgs)
@@ -905,6 +935,8 @@ namespace BladeFrenzy.Gameplay.Core
             EnsureComboPopupText();
             EnsureHighScoreElements();
             EnsureGameOverSoundSource();
+            EnsureDifficultyTierSoundSource();
+            EnsureDifficultyTierPopupText();
         }
 
         private void EnsureHighScoreElements()
@@ -1050,6 +1082,214 @@ namespace BladeFrenzy.Gameplay.Core
             _gameOverSource.volume = gameOverVolume;
             _gameOverSource.bypassReverbZones = false;
             _gameOverSource.reverbZoneMix = 1.1f;
+        }
+
+        private void EnsureDifficultyTierPopupText()
+        {
+            if (scoreboardCanvas == null)
+                return;
+
+            Transform parent = scoreboardCanvas.transform.Find("Panel");
+            if (parent == null)
+                parent = scoreboardCanvas.transform;
+
+            if (_difficultyTierPopupText == null)
+            {
+                Transform existing = parent.Find("DifficultyTierPopupText");
+                if (existing != null)
+                    _difficultyTierPopupText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (_difficultyTierPopupText == null)
+            {
+                CreateText(
+                    "DifficultyTierPopupText",
+                    parent,
+                    string.Empty,
+                    difficultyTierPopupFontSize,
+                    FontStyles.Bold,
+                    TextAlignmentOptions.Center,
+                    new Vector2(0.5f, 0.5f),
+                    new Vector2(0.5f, 0.5f),
+                    difficultyTierPopupAnchoredPosition,
+                    difficultyTierPopupSize,
+                    out _difficultyTierPopupText,
+                    difficultyTierMediumColor);
+                _difficultyTierPopupText.enableAutoSizing = false;
+                _difficultyTierPopupText.outlineWidth = 0.3f;
+                _difficultyTierPopupText.outlineColor = new Color32(20, 6, 0, 255);
+            }
+
+            _difficultyTierPopupText.raycastTarget = false;
+            _difficultyTierPopupText.transform.SetAsLastSibling();
+            _difficultyTierPopupText.gameObject.SetActive(false);
+        }
+
+        private void PlayDifficultyTierPopup(int tierIndex, string tierLabel)
+        {
+            EnsureDifficultyTierPopupText();
+
+            if (_difficultyTierPopupText == null)
+                return;
+
+            if (_difficultyTierPopupRoutine != null)
+                StopCoroutine(_difficultyTierPopupRoutine);
+
+            _difficultyTierPopupRoutine = StartCoroutine(AnimateDifficultyTierPopup(tierIndex, tierLabel));
+        }
+
+        private IEnumerator AnimateDifficultyTierPopup(int tierIndex, string tierLabel)
+        {
+            _difficultyTierPopupText.gameObject.SetActive(true);
+            _difficultyTierPopupText.transform.SetAsLastSibling();
+            _difficultyTierPopupText.text = string.IsNullOrWhiteSpace(tierLabel) ? "—" : tierLabel.ToUpperInvariant();
+            Color tierColor = GetDifficultyTierColor(tierIndex);
+            _difficultyTierPopupText.color = tierColor;
+
+            RectTransform popupRect = (RectTransform)_difficultyTierPopupText.transform;
+            float slide = difficultyTierPopupSlideDistance * (tierIndex >= 3 ? -1f : 1f);
+            Vector2 startPos = difficultyTierPopupAnchoredPosition + new Vector2(slide, 0f);
+            Vector2 settlePos = difficultyTierPopupAnchoredPosition;
+
+            float duration = Mathf.Max(0.4f, difficultyTierPopupDuration);
+            float slideInPhase = Mathf.Min(0.35f, duration * 0.32f);
+            float pulseStart = slideInPhase;
+            float pulsePhase = Mathf.Min(0.35f, duration * 0.3f);
+            float fadeStart = duration * 0.7f;
+
+            float elapsed = 0f;
+            popupRect.anchoredPosition = startPos;
+            popupRect.localScale = Vector3.one * 0.85f;
+            SetTextAlpha(_difficultyTierPopupText, 0f);
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+
+                Vector2 currentPos;
+                if (elapsed <= slideInPhase)
+                {
+                    float t = EaseOutCubic(Mathf.Clamp01(elapsed / slideInPhase));
+                    currentPos = Vector2.LerpUnclamped(startPos, settlePos, t);
+                }
+                else
+                {
+                    currentPos = settlePos;
+                }
+                popupRect.anchoredPosition = currentPos;
+
+                Vector3 scale;
+                if (elapsed <= slideInPhase)
+                {
+                    float t = EaseOutCubic(Mathf.Clamp01(elapsed / slideInPhase));
+                    scale = Vector3.LerpUnclamped(Vector3.one * 0.85f, Vector3.one * 1.15f, t);
+                }
+                else if (elapsed <= pulseStart + pulsePhase)
+                {
+                    float pulseT = Mathf.Clamp01((elapsed - pulseStart) / Mathf.Max(0.0001f, pulsePhase));
+                    float wave = Mathf.Sin(pulseT * Mathf.PI * 2f) * (1f - pulseT);
+                    scale = Vector3.one * (1.15f + wave * 0.18f);
+                }
+                else
+                {
+                    float settleT = EaseOutCubic(Mathf.Clamp01((elapsed - (pulseStart + pulsePhase)) / Mathf.Max(0.0001f, duration - (pulseStart + pulsePhase))));
+                    scale = Vector3.LerpUnclamped(Vector3.one * 1.15f, Vector3.one, settleT);
+                }
+                popupRect.localScale = scale;
+
+                float alpha;
+                if (elapsed <= slideInPhase)
+                    alpha = EaseOutCubic(Mathf.Clamp01(elapsed / slideInPhase));
+                else if (elapsed < fadeStart)
+                    alpha = 1f;
+                else
+                    alpha = 1f - EaseOutCubic(Mathf.Clamp01((elapsed - fadeStart) / Mathf.Max(0.0001f, duration - fadeStart)));
+                SetTextAlpha(_difficultyTierPopupText, alpha);
+
+                yield return null;
+            }
+
+            _difficultyTierPopupText.gameObject.SetActive(false);
+            popupRect.anchoredPosition = settlePos;
+            popupRect.localScale = Vector3.one;
+            _difficultyTierPopupText.color = tierColor;
+            _difficultyTierPopupRoutine = null;
+        }
+
+        private void HideDifficultyTierPopup()
+        {
+            if (_difficultyTierPopupRoutine != null)
+            {
+                StopCoroutine(_difficultyTierPopupRoutine);
+                _difficultyTierPopupRoutine = null;
+            }
+
+            if (_difficultyTierPopupText == null)
+                return;
+
+            _difficultyTierPopupText.gameObject.SetActive(false);
+            ((RectTransform)_difficultyTierPopupText.transform).anchoredPosition = difficultyTierPopupAnchoredPosition;
+            _difficultyTierPopupText.transform.localScale = Vector3.one;
+        }
+
+        private Color GetDifficultyTierColor(int tierIndex)
+        {
+            switch (Mathf.Clamp(tierIndex, 0, 3))
+            {
+                case 3: return difficultyTierFrenzyColor;
+                case 2: return difficultyTierHardColor;
+                case 1: return difficultyTierMediumColor;
+                default: return difficultyTierEasyColor;
+            }
+        }
+
+        private void EnsureDifficultyTierSoundSource()
+        {
+            if (scoreboardCanvas == null)
+                return;
+
+            if (_difficultyTierSource == null)
+            {
+                Transform existing = scoreboardCanvas.transform.Find("DifficultyTierAudio");
+                if (existing != null)
+                    _difficultyTierSource = existing.GetComponent<AudioSource>();
+            }
+
+            if (_difficultyTierSource == null)
+            {
+                GameObject audioObject = new("DifficultyTierAudio", typeof(AudioSource));
+                audioObject.transform.SetParent(scoreboardCanvas.transform, false);
+                _difficultyTierSource = audioObject.GetComponent<AudioSource>();
+            }
+
+            _difficultyTierSource.playOnAwake = false;
+            _difficultyTierSource.spatialBlend = 1f;
+            _difficultyTierSource.spatialize = false;
+            _difficultyTierSource.dopplerLevel = 0f;
+            _difficultyTierSource.rolloffMode = AudioRolloffMode.Linear;
+            _difficultyTierSource.minDistance = Mathf.Max(0.1f, difficultyTierMinDistance);
+            _difficultyTierSource.maxDistance = Mathf.Max(_difficultyTierSource.minDistance, difficultyTierMaxDistance);
+            _difficultyTierSource.volume = Mathf.Clamp(difficultyTierVolume, 0f, 1.5f);
+            _difficultyTierSource.bypassReverbZones = true;
+        }
+
+        private void PlayDifficultyTierSound(int tierIndex)
+        {
+            EnsureDifficultyTierSoundSource();
+
+            if (_difficultyTierSource == null)
+                return;
+
+            int clamped = Mathf.Clamp(tierIndex, 0, 3);
+            AudioClip clip = (difficultyTierClips != null && clamped < difficultyTierClips.Length && difficultyTierClips[clamped] != null)
+                ? difficultyTierClips[clamped]
+                : GetGeneratedDifficultyTierClip(clamped);
+
+            if (clip == null)
+                return;
+
+            _difficultyTierSource.pitch = 1f;
+            _difficultyTierSource.PlayOneShot(clip, Mathf.Clamp(difficultyTierVolume, 0f, 1.5f));
         }
 
         private void PlayGameOverSound()
@@ -1265,6 +1505,89 @@ namespace BladeFrenzy.Gameplay.Core
             return s_generatedGameOverSting;
         }
 
+        private static AudioClip GetGeneratedDifficultyTierClip(int tierIndex)
+        {
+            int idx = Mathf.Clamp(tierIndex, 0, 3);
+            if (s_generatedDifficultyTierClips[idx] != null)
+                return s_generatedDifficultyTierClips[idx];
+
+            const int sampleRate = 44100;
+            float length;
+            float[] arpeggioFrequencies;
+            float noteDuration;
+            float crashGain;
+            float saturation;
+            float baseGain;
+
+            switch (idx)
+            {
+                case 1:
+                    length = 0.85f;
+                    arpeggioFrequencies = new[] { 392f, 523.25f, 659.25f };
+                    noteDuration = 0.18f;
+                    crashGain = 0.12f;
+                    saturation = 1.05f;
+                    baseGain = 0.55f;
+                    break;
+                case 2:
+                    length = 1.0f;
+                    arpeggioFrequencies = new[] { 466.16f, 587.33f, 739.99f, 880f };
+                    noteDuration = 0.16f;
+                    crashGain = 0.32f;
+                    saturation = 1.4f;
+                    baseGain = 0.7f;
+                    break;
+                case 3:
+                    length = 1.4f;
+                    arpeggioFrequencies = new[] { 220f, 277.18f, 329.63f, 415.30f, 523.25f, 659.25f };
+                    noteDuration = 0.14f;
+                    crashGain = 0.7f;
+                    saturation = 1.9f;
+                    baseGain = 0.95f;
+                    break;
+                default:
+                    length = 0.6f;
+                    arpeggioFrequencies = new[] { 523.25f, 659.25f };
+                    noteDuration = 0.2f;
+                    crashGain = 0.06f;
+                    saturation = 1f;
+                    baseGain = 0.45f;
+                    break;
+            }
+
+            int sampleCount = Mathf.CeilToInt(sampleRate * length);
+            float[] samples = new float[sampleCount];
+
+            for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++)
+            {
+                float time = sampleIndex / (float)sampleRate;
+                int noteIndex = Mathf.Clamp(Mathf.FloorToInt(time / noteDuration), 0, arpeggioFrequencies.Length - 1);
+                float noteTime = time - noteIndex * noteDuration;
+                float currentFreq = arpeggioFrequencies[noteIndex];
+
+                float noteAttack = 1f - Mathf.Exp(-70f * noteTime);
+                float noteDecay = Mathf.Exp(-6f * noteTime);
+                float noteEnvelope = noteAttack * noteDecay;
+
+                float fundamental = Mathf.Sin(2f * Mathf.PI * currentFreq * noteTime);
+                float harmonic = Mathf.Sin(2f * Mathf.PI * currentFreq * 2f * noteTime) * 0.35f;
+                float subOctave = Mathf.Sin(2f * Mathf.PI * currentFreq * 0.5f * noteTime) * 0.45f;
+
+                float globalDecay = Mathf.Exp(-1.6f * time);
+                float crashEnvelope = Mathf.Exp(-12f * time);
+                float crash = (Random.value * 2f - 1f) * crashEnvelope * crashGain;
+
+                float mixed = (fundamental + harmonic + subOctave) * noteEnvelope + crash;
+                float saturated = (float)System.Math.Tanh(mixed * saturation);
+                samples[sampleIndex] = Mathf.Clamp(saturated * globalDecay * baseGain, -0.99f, 0.99f);
+            }
+
+            AudioClip clip = AudioClip.Create($"Generated Difficulty Tier {idx}", sampleCount, 1, sampleRate, false);
+            clip.SetData(samples, 0);
+            s_generatedDifficultyTierClips[idx] = clip;
+            return clip;
+        }
+
         private void CaptureScoreTextBaseScale()
         {
             if (_hasScoreTextBaseScale || scoreText == null)
@@ -1329,6 +1652,7 @@ namespace BladeFrenzy.Gameplay.Core
 
             HideComboPopup();
             HideHighScoreCelebration();
+            HideDifficultyTierPopup();
 
             if (_gameOverIntroRoutine != null)
             {
