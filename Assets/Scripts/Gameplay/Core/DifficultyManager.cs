@@ -9,9 +9,9 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private SpawnManager spawnManager;
 
         [Header("Progression")]
-        [SerializeField] private AnimationCurve spawnIntervalOverRun = AnimationCurve.Linear(0f, 1.25f, 1f, 0.5f);
-        [SerializeField] private AnimationCurve bombRatioOverRun = AnimationCurve.Linear(0f, 0.1f, 1f, 0.3f);
-        [SerializeField] private AnimationCurve launchSpeedMultiplierOverRun = AnimationCurve.Linear(0f, 1f, 1f, 1.8f);
+        [SerializeField] private AnimationCurve spawnIntervalOverRun = AnimationCurve.Linear(0f, 2.0f, 1f, 1.7f);
+        [SerializeField] private AnimationCurve bombRatioOverRun = AnimationCurve.Linear(0f, 0.04f, 1f, 0.13f);
+        [SerializeField] private AnimationCurve launchSpeedMultiplierOverRun = AnimationCurve.Linear(0f, 1f, 1f, 1.3f);
 
         [Header("Score Tier Thresholds")]
         [SerializeField] private int mediumScoreThreshold = 100;
@@ -19,10 +19,9 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private int frenzyScoreThreshold = 300;
 
         [Header("Curve Ramp Tuning")]
-        [SerializeField, Range(0.1f, 2f)] private float difficultyRampExponent = 0.45f;
-        [SerializeField, Range(20f, 400f)] private float difficultyRampScore = 150f;
+        [SerializeField, Range(20f, 400f)] private float difficultyRampScore = 350f;
         [SerializeField] private bool allowOvershootPastMax = true;
-        [SerializeField, Range(1f, 5f)] private float overshootCap = 2.5f;
+        [SerializeField, Range(1f, 5f)] private float overshootCap = 1.2f;
 
         [Header("Tier Labels")]
         [SerializeField] private string easyLabel = "Easy";
@@ -71,11 +70,7 @@ namespace BladeFrenzy.Gameplay.Core
             int score = _scoreManager != null ? _scoreManager.Score : 0;
             float rampScore = Mathf.Max(1f, difficultyRampScore);
             float rawProgress = score / rampScore;
-            float clampedProgress = allowOvershootPastMax ? Mathf.Min(rawProgress, overshootCap) : Mathf.Clamp01(rawProgress);
-            float exponent = Mathf.Max(0.05f, difficultyRampExponent);
-            float normalizedProgress = clampedProgress <= 1f
-                ? Mathf.Pow(clampedProgress, exponent)
-                : 1f + (clampedProgress - 1f);
+            float normalizedProgress = allowOvershootPastMax ? Mathf.Min(rawProgress, overshootCap) : Mathf.Clamp01(rawProgress);
 
             spawnManager.SetSpawnInterval(Mathf.Max(0.05f, EvaluateCurve(spawnIntervalOverRun, normalizedProgress)));
             spawnManager.SetBombRatio(Mathf.Clamp01(EvaluateCurve(bombRatioOverRun, normalizedProgress)));
