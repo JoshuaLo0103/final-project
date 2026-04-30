@@ -14,6 +14,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private Transform[] spawnPoints;
         [SerializeField] private SpawnedObject[] fruitPrefabs;
         [SerializeField] private SpawnedObject bombPrefab;
+        [SerializeField] private SpawnedObject healingFruitPrefab;
         [SerializeField] private SpawnPointFlashFeedback spawnPointFlashFeedback;
 
         [Header("Timing")]
@@ -35,6 +36,7 @@ namespace BladeFrenzy.Gameplay.Spawning
 
         [Header("Distribution")]
         [SerializeField, Range(0f, 1f)] private float bombChance = 0.15f;
+        [SerializeField, Range(0f, 1f)] private float healingFruitChance = 0.08f;
 
         private readonly Dictionary<SpawnedObject, Queue<SpawnedObject>> _pools = new();
         private Coroutine _spawnLoop;
@@ -45,6 +47,9 @@ namespace BladeFrenzy.Gameplay.Spawning
         private void Start()
         {
             _baseLaunchSpeed = launchSpeed;
+            if (healingFruitPrefab == null)
+                healingFruitPrefab = Resources.Load<SpawnedObject>("HealingAvocadoFruit");
+
             if (spawnPointFlashFeedback == null)
                 spawnPointFlashFeedback = GetComponent<SpawnPointFlashFeedback>();
             spawnPointFlashFeedback?.EnsureMarkersFor(spawnPoints);
@@ -176,7 +181,8 @@ namespace BladeFrenzy.Gameplay.Spawning
 
             bool allowBomb = Time.time - _runStartTime >= initialBombGracePeriod;
             bool spawnBomb = allowBomb && bombPrefab != null && Random.value < bombChance;
-            SpawnedObject prefab = spawnBomb ? bombPrefab : GetRandomFruitPrefab();
+            bool spawnHealingFruit = !spawnBomb && healingFruitPrefab != null && Random.value < healingFruitChance;
+            SpawnedObject prefab = spawnBomb ? bombPrefab : spawnHealingFruit ? healingFruitPrefab : GetRandomFruitPrefab();
             if (prefab == null)
                 return;
 
@@ -278,6 +284,9 @@ namespace BladeFrenzy.Gameplay.Spawning
             FruitData data = spawnedObject.GetComponent<FruitData>();
             if (data != null && data.IsBomb)
                 return bombPrefab;
+
+            if (spawnedObject.GetComponent<HealingFruitPickup>() != null)
+                return healingFruitPrefab;
 
             SpawnedObject sourcePrefab = spawnedObject.GetSourcePrefab();
             if (sourcePrefab != null)
