@@ -95,6 +95,15 @@ namespace BladeFrenzy.Gameplay.Spawning
                 return true;
             }
 
+            if (!_meshFilter.sharedMesh.isReadable)
+            {
+                Debug.LogWarning(
+                    $"{name} cannot spawn sliced halves because mesh '{_meshFilter.sharedMesh.name}' is not readable. Enable Read/Write on the mesh import settings.",
+                    this);
+                HandleSuccessfulSlice();
+                return true;
+            }
+
             Vector3 localNormal = transform.InverseTransformDirection(planeNormal).normalized;
             if (localNormal.sqrMagnitude < 0.0001f)
             {
