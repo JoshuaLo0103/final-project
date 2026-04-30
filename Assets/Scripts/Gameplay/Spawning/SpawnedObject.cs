@@ -25,6 +25,8 @@ namespace BladeFrenzy.Gameplay.Spawning
         private FruitData _fruitData;
         private MeshFilter _meshFilter;
         private MeshRenderer _meshRenderer;
+        private BombFuseSizzleSound _bombFuseSizzleSound;
+        private BombWarningGlow _bombWarningGlow;
         private bool _isActive;
 
         private void Awake()
@@ -61,6 +63,19 @@ namespace BladeFrenzy.Gameplay.Spawning
             _rigidbody.angularVelocity = Vector3.zero;
             _rigidbody.linearVelocity = velocity;
             _rigidbody.angularVelocity = angularVelocity;
+
+            if (_fruitData != null && _fruitData.IsBomb)
+            {
+                if (_bombFuseSizzleSound == null)
+                    _bombFuseSizzleSound = GetComponent<BombFuseSizzleSound>() ?? gameObject.AddComponent<BombFuseSizzleSound>();
+
+                _bombFuseSizzleSound.Play();
+
+                if (_bombWarningGlow == null)
+                    _bombWarningGlow = GetComponent<BombWarningGlow>() ?? gameObject.AddComponent<BombWarningGlow>();
+
+                _bombWarningGlow.BeginGlow();
+            }
         }
 
         public bool TrySlice(Vector3 planePoint, Vector3 planeNormal, Vector3 swingDirection)
@@ -131,9 +146,16 @@ namespace BladeFrenzy.Gameplay.Spawning
                 return;
 
             if (_fruitData.IsBomb)
+            {
                 GameEvents.RaiseBombHit(_fruitData, transform.position);
+            }
             else
+            {
+                HealingFruitPickup healingFruitPickup = GetComponent<HealingFruitPickup>();
+                healingFruitPickup?.RestoreLife();
+
                 GameEvents.RaiseFruitSliced(_fruitData, transform.position);
+            }
 
             TryReturnToPool(false);
         }
@@ -173,6 +195,11 @@ namespace BladeFrenzy.Gameplay.Spawning
                 return false;
 
             _isActive = false;
+            if (_bombFuseSizzleSound != null)
+                _bombFuseSizzleSound.Stop();
+            if (_bombWarningGlow != null)
+                _bombWarningGlow.EndGlow();
+
             _rigidbody.linearVelocity = Vector3.zero;
             _rigidbody.angularVelocity = Vector3.zero;
 

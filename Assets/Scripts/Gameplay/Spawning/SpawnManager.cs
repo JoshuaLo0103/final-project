@@ -14,6 +14,8 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private Transform[] spawnPoints;
         [SerializeField] private SpawnedObject[] fruitPrefabs;
         [SerializeField] private SpawnedObject bombPrefab;
+        [SerializeField] private SpawnedObject healingFruitPrefab;
+        [SerializeField] private SpawnPointFlashFeedback spawnPointFlashFeedback;
 
         [Header("Timing")]
         [SerializeField] private bool spawnOnStart = true;
@@ -26,13 +28,15 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private float upwardBoost = 2.5f;
         [SerializeField] private float targetSpread = 1.1f;
         [SerializeField] private float torqueStrength = 7f;
-        [SerializeField] private float maxReachDistance = 0.40f;
+        [SerializeField] private float spawnPointGapOffset = 0.2f;
+        [SerializeField] private float maxReachDistance = 0.15f;
         [SerializeField] private float swordReachPadding = 0.18f;
         [SerializeField] private float minimumReachFloor = 0.45f;
         [SerializeField] private Vector2 verticalTargetOffsetRange = new(-0.12f, 0.32f);
 
         [Header("Distribution")]
         [SerializeField, Range(0f, 1f)] private float bombChance = 0.15f;
+        [SerializeField, Range(0f, 1f)] private float healingFruitChance = 0.08f;
 
         private readonly Dictionary<SpawnedObject, Queue<SpawnedObject>> _pools = new();
         private Coroutine _spawnLoop;
@@ -43,15 +47,29 @@ namespace BladeFrenzy.Gameplay.Spawning
         private void Start()
         {
             _baseLaunchSpeed = launchSpeed;
+            if (healingFruitPrefab == null)
+                healingFruitPrefab = Resources.Load<SpawnedObject>("HealingAvocadoFruit");
+
+            if (spawnPointFlashFeedback == null)
+                spawnPointFlashFeedback = GetComponent<SpawnPointFlashFeedback>();
+            spawnPointFlashFeedback?.EnsureMarkersFor(spawnPoints);
 
             if (spawnOnStart && FindFirstObjectByType<GameManager>() == null)
                 BeginRun();
+        }
+
+        private void OnValidate()
+        {
+            if (spawnPointFlashFeedback == null)
+                spawnPointFlashFeedback = GetComponent<SpawnPointFlashFeedback>();
+            spawnPointFlashFeedback?.EnsureMarkersFor(spawnPoints);
         }
 
         public void BeginRun()
         {
             StopRun();
             _runStartTime = Time.time;
+            spawnPointFlashFeedback?.EnsureMarkersFor(spawnPoints);
             _spawnLoop = StartCoroutine(SpawnLoop());
         }
 
@@ -103,6 +121,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         public void SetActiveSpawnPoints(Transform[] points)
         {
             spawnPoints = points;
+            spawnPointFlashFeedback?.EnsureMarkersFor(spawnPoints);
         }
 
         public void SetActiveSpawnPointCount(int count)
@@ -116,6 +135,7 @@ namespace BladeFrenzy.Gameplay.Spawning
                 activePoints[index] = spawnPoints[index];
 
             spawnPoints = activePoints;
+            spawnPointFlashFeedback?.EnsureMarkersFor(spawnPoints);
         }
 
         public void SetFruitPrefabs(SpawnedObject[] prefabs)
@@ -161,25 +181,44 @@ namespace BladeFrenzy.Gameplay.Spawning
 
             bool allowBomb = Time.time - _runStartTime >= initialBombGracePeriod;
             bool spawnBomb = allowBomb && bombPrefab != null && Random.value < bombChance;
-            SpawnedObject prefab = spawnBomb ? bombPrefab : GetRandomFruitPrefab();
+            bool spawnHealingFruit = !spawnBomb && healingFruitPrefab != null && Random.value < healingFruitChance;
+            SpawnedObject prefab = spawnBomb ? bombPrefab : spawnHealingFruit ? healingFruitPrefab : GetRandomFruitPrefab();
             if (prefab == null)
                 return;
 
             Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
             SpawnedObject instance = GetOrCreate(prefab);
+            spawnPointFlashFeedback?.Trigger(spawnPoint);
 
             Vector3 target = ResolveDynamicTargetPoint();
+            Vector3 spawnPosition = ResolveSpawnPosition(spawnPoint, target);
 
-            Vector3 launchDirection = (target - spawnPoint.position).normalized;
+            Vector3 launchDirection = (target - spawnPosition).normalized;
             Vector3 velocity = launchDirection * launchSpeed + Vector3.up * upwardBoost;
             Vector3 angularVelocity = Random.insideUnitSphere * torqueStrength;
 
             instance.Launch(
                 this,
-                spawnPoint.position,
+                spawnPosition,
                 Random.rotation,
                 velocity,
                 angularVelocity);
+        }
+
+        private Vector3 ResolveSpawnPosition(Transform spawnPoint, Vector3 target)
+        {
+            if (spawnPoint == null)
+                return target;
+
+            Vector3 spawnPosition = spawnPoint.position;
+            if (spawnPointGapOffset <= 0f)
+                return spawnPosition;
+
+            Vector3 towardTarget = (target - spawnPosition).normalized;
+            if (towardTarget.sqrMagnitude < 0.0001f)
+                return spawnPosition;
+
+            return spawnPosition + towardTarget * spawnPointGapOffset;
         }
 
         private Vector3 ResolveDynamicTargetPoint()
@@ -195,8 +234,9 @@ namespace BladeFrenzy.Gameplay.Spawning
                 right = Vector3.right;
 
             float swordReach = ResolveSwordReach();
-            float minimumReachDistance = Mathf.Max(minimumReachFloor, swordReach - swordReachPadding);
-            float maximumReachDistance = Mathf.Max(minimumReachDistance + 0.2f, maxReachDistance);
+            float suggestedMinimum = Mathf.Max(minimumReachFloor, swordReach - swordReachPadding);
+            float maximumReachDistance = Mathf.Max(0.05f, maxReachDistance);
+            float minimumReachDistance = Mathf.Min(suggestedMinimum, Mathf.Max(0.01f, maximumReachDistance - 0.01f));
             float reachDistance = Random.Range(minimumReachDistance, maximumReachDistance);
 
             Vector3 target = playerOrigin + forward * reachDistance;
@@ -244,6 +284,9 @@ namespace BladeFrenzy.Gameplay.Spawning
             FruitData data = spawnedObject.GetComponent<FruitData>();
             if (data != null && data.IsBomb)
                 return bombPrefab;
+
+            if (spawnedObject.GetComponent<HealingFruitPickup>() != null)
+                return healingFruitPrefab;
 
             SpawnedObject sourcePrefab = spawnedObject.GetSourcePrefab();
             if (sourcePrefab != null)

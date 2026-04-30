@@ -26,8 +26,8 @@ namespace BladeFrenzy.Gameplay.Core
 
         private void Awake()
         {
-            _slashClip = fruitSliceClip != null ? fruitSliceClip : Resources.Load<AudioClip>(resourcesClipPath);
-            _bombClip = Resources.Load<AudioClip>(bombResourcesClipPath);
+            _slashClip = ResolveClip(resourcesClipPath, "slash");
+            _bombClip = ResolveClip(bombResourcesClipPath, "explosion");
 
             _audioSource = GetComponent<AudioSource>();
             if (_audioSource == null)
@@ -47,6 +47,25 @@ namespace BladeFrenzy.Gameplay.Core
                 Debug.LogWarning($"SliceSoundEffect could not load a fruit slice clip. Assign one directly or add a clip at Resources/{resourcesClipPath}.");
             if (_bombClip == null)
                 Debug.LogWarning($"SliceSoundEffect could not load bomb clip at Resources/{bombResourcesClipPath}.");
+        }
+
+        private static AudioClip ResolveClip(string preferredPath, string fallbackNameHint)
+        {
+            AudioClip preferred = Resources.Load<AudioClip>(preferredPath);
+            if (preferred != null)
+                return preferred;
+
+            AudioClip[] clips = Resources.LoadAll<AudioClip>("Audio");
+            foreach (AudioClip clip in clips)
+            {
+                if (clip == null)
+                    continue;
+
+                if (clip.name.IndexOf(fallbackNameHint, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return clip;
+            }
+
+            return null;
         }
 
         private void OnEnable()
@@ -94,9 +113,6 @@ namespace BladeFrenzy.Gameplay.Core
                 FruitType.Banana => new Vector2(1.08f, 1.15f),
                 FruitType.Orange => new Vector2(1.0f, 1.07f),
                 FruitType.Watermelon => new Vector2(0.88f, 0.96f),
-                FruitType.Grapes => new Vector2(1.03f, 1.11f),
-                FruitType.Pineapple => new Vector2(0.94f, 1.02f),
-                FruitType.Cherry => new Vector2(1.1f, 1.18f),
                 _ => new Vector2(1f, 1f)
             };
 
