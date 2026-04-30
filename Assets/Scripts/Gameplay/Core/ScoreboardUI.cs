@@ -83,6 +83,17 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private Color difficultyTierFrenzyColor = new(1f, 0.3f, 0.45f, 1f);
         [SerializeField] private float gameOverStatHighlightScale = 1.35f;
         [SerializeField] private Color gameOverStatHighlightColor = new(1f, 0.86f, 0.32f, 1f);
+        [SerializeField] private int highScoreParticleCount = 140;
+        [SerializeField] private float highScoreParticleLifetime = 2.4f;
+        [SerializeField] private float highScoreParticleSpeed = 4.2f;
+        [SerializeField] private float highScoreParticleSize = 0.11f;
+        [SerializeField] private float highScoreParticleSizeVariation = 0.05f;
+        [SerializeField] private float highScoreParticleGravity = 1.15f;
+        [SerializeField] private float highScoreParticleBurstRadius = 0.18f;
+        [SerializeField] private Vector3 highScoreParticleOffset = new(0f, -0.05f, 0.1f);
+        [SerializeField] private Color highScoreParticleColorPrimary = new(1f, 0.86f, 0.22f, 1f);
+        [SerializeField] private Color highScoreParticleColorSecondary = new(1f, 0.97f, 0.55f, 1f);
+        [SerializeField] private Color highScoreParticleColorAccent = new(1f, 0.55f, 0.1f, 1f);
 
         private GameManager _gameManager;
         private ScoreManager _scoreManager;
@@ -120,6 +131,8 @@ namespace BladeFrenzy.Gameplay.Core
         private Coroutine _gameOverIntroRoutine;
         private Vector3 _gameOverPanelOriginalScale = Vector3.one;
         private bool _hasGameOverPanelScale;
+        private ParticleSystem _highScoreParticles;
+        private Material _highScoreParticleMaterial;
 
         private void Awake()
         {
@@ -171,6 +184,19 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnLivesChanged -= HandleLivesChanged;
 
             StopFeedbackAnimations();
+        }
+
+        private void OnDestroy()
+        {
+            if (_highScoreParticleMaterial == null)
+                return;
+
+            if (Application.isPlaying)
+                Destroy(_highScoreParticleMaterial);
+            else
+                DestroyImmediate(_highScoreParticleMaterial);
+
+            _highScoreParticleMaterial = null;
         }
 
         private void Start()
@@ -651,6 +677,28 @@ namespace BladeFrenzy.Gameplay.Core
                     StopCoroutine(_highScorePopupRoutine);
                 _highScorePopupRoutine = StartCoroutine(AnimateHighScorePopup(newHighScore));
             }
+
+            PlayHighScoreParticles();
+        }
+
+        private void PlayHighScoreParticles()
+        {
+            EnsureHighScoreParticles();
+
+            if (_highScoreParticles == null || scoreboardCanvas == null)
+                return;
+
+            Transform canvasTransform = scoreboardCanvas.transform;
+            Vector3 burstPosition = canvasTransform.position
+                + canvasTransform.right * highScoreParticleOffset.x
+                + canvasTransform.up * highScoreParticleOffset.y
+                + canvasTransform.forward * highScoreParticleOffset.z;
+
+            _highScoreParticles.transform.position = burstPosition;
+            _highScoreParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            _highScoreParticles.Clear(true);
+            _highScoreParticles.Emit(Mathf.Max(1, highScoreParticleCount));
+            _highScoreParticles.Play(true);
         }
 
         private IEnumerator AnimatePanelFlash()
@@ -934,9 +982,121 @@ namespace BladeFrenzy.Gameplay.Core
             EnsureComboChimeSource();
             EnsureComboPopupText();
             EnsureHighScoreElements();
+            EnsureHighScoreParticles();
             EnsureGameOverSoundSource();
             EnsureDifficultyTierSoundSource();
             EnsureDifficultyTierPopupText();
+        }
+
+        private void EnsureHighScoreParticles()
+        {
+            if (_highScoreParticles != null)
+                return;
+
+            GameObject particleObject = new("HighScoreCelebrationParticles");
+            particleObject.transform.SetParent(transform, worldPositionStays: false);
+            particleObject.transform.localPosition = Vector3.zero;
+            particleObject.transform.localRotation = Quaternion.identity;
+            particleObject.transform.localScale = Vector3.one;
+
+            _highScoreParticles = particleObject.AddComponent<ParticleSystem>();
+
+            var main = _highScoreParticles.main;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.duration = highScoreParticleLifetime;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(highScoreParticleLifetime * 0.7f, highScoreParticleLifetime);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(highScoreParticleSpeed * 0.55f, highScoreParticleSpeed);
+            main.startSize = new ParticleSystem.MinMaxCurve(
+                Mathf.Max(0.01f, highScoreParticleSize - highScoreParticleSizeVariation),
+                highScoreParticleSize + highScoreParticleSizeVariation);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = new ParticleSystem.MinMaxGradient(
+                highScoreParticleColorPrimary,
+                highScoreParticleColorSecondary);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.gravityModifier = highScoreParticleGravity;
+            main.maxParticles = Mathf.Max(highScoreParticleCount * 2, 256);
+
+            var emission = _highScoreParticles.emission;
+            emission.enabled = false;
+
+            var shape = _highScoreParticles.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = highScoreParticleBurstRadius;
+
+            var velocityOverLifetime = _highScoreParticles.velocityOverLifetime;
+            velocityOverLifetime.enabled = true;
+            velocityOverLifetime.space = ParticleSystemSimulationSpace.World;
+            velocityOverLifetime.radial = new ParticleSystem.MinMaxCurve(0.4f, 1.1f);
+            velocityOverLifetime.y = new ParticleSystem.MinMaxCurve(0.6f, 1.8f);
+
+            var rotationOverLifetime = _highScoreParticles.rotationOverLifetime;
+            rotationOverLifetime.enabled = true;
+            rotationOverLifetime.z = new ParticleSystem.MinMaxCurve(-Mathf.PI * 2f, Mathf.PI * 2f);
+
+            var colorOverLifetime = _highScoreParticles.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            Gradient colorGradient = new();
+            colorGradient.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(Color.Lerp(highScoreParticleColorSecondary, Color.white, 0.25f), 0f),
+                    new GradientColorKey(highScoreParticleColorPrimary, 0.4f),
+                    new GradientColorKey(highScoreParticleColorAccent, 1f)
+                },
+                new[]
+                {
+                    new GradientAlphaKey(1f, 0f),
+                    new GradientAlphaKey(1f, 0.6f),
+                    new GradientAlphaKey(0f, 1f)
+                });
+            colorOverLifetime.color = colorGradient;
+
+            var sizeOverLifetime = _highScoreParticles.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            AnimationCurve sizeCurve = new(
+                new Keyframe(0f, 0.6f),
+                new Keyframe(0.2f, 1.1f),
+                new Keyframe(0.85f, 0.95f),
+                new Keyframe(1f, 0f));
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+            var renderer = _highScoreParticles.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.alignment = ParticleSystemRenderSpace.View;
+            renderer.sortMode = ParticleSystemSortMode.Distance;
+            if (_highScoreParticleMaterial == null)
+                _highScoreParticleMaterial = CreateHighScoreParticleMaterial();
+            renderer.sharedMaterial = _highScoreParticleMaterial;
+        }
+
+        private static Material CreateHighScoreParticleMaterial()
+        {
+            Shader shader =
+                Shader.Find("Universal Render Pipeline/Particles/Unlit") ??
+                Shader.Find("Universal Render Pipeline/Unlit") ??
+                Shader.Find("Sprites/Default") ??
+                Shader.Find("Legacy Shaders/Particles/Alpha Blended");
+
+            if (shader == null)
+                return null;
+
+            Material material = new(shader)
+            {
+                name = "HighScoreCelebrationParticles_Runtime",
+                hideFlags = HideFlags.HideAndDontSave,
+                renderQueue = 3000
+            };
+
+            if (material.HasProperty("_BaseColor"))
+                material.SetColor("_BaseColor", Color.white);
+            if (material.HasProperty("_TintColor"))
+                material.SetColor("_TintColor", Color.white);
+            if (material.HasProperty("_Color"))
+                material.SetColor("_Color", Color.white);
+            return material;
         }
 
         private void EnsureHighScoreElements()
