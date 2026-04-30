@@ -8,7 +8,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private string resourcesClipPath = "Audio/BombFuseSizzle";
 
         [Header("Spatial Audio")]
-        [SerializeField] private float volume = 0.45f;
+        [SerializeField] private float volume = 0.6f;
         [SerializeField, Range(0f, 1f)] private float spatialBlend = 1f;
         [SerializeField] private float minDistance = 0.35f;
         [SerializeField] private float maxDistance = 6f;
