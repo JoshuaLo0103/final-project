@@ -12,9 +12,12 @@ namespace BladeFrenzy.Gameplay.Core
         public int Multiplier { get; private set; } = 1;
         public int HighScore { get; private set; }
 
+        private CoinManager _coinManager;
+
         private void Awake()
         {
             HighScore = PlayerPrefs.GetInt(HighScoreKey, 0);
+            _coinManager = GetComponent<CoinManager>();
         }
 
         private void OnEnable()
@@ -23,6 +26,7 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnFruitSliced += HandleFruitSliced;
             GameEvents.OnFruitMissed += HandleFruitMissed;
             GameEvents.OnBombHit += HandleBombHit;
+            GameEvents.OnCoinCollected += HandleCoinCollected;
         }
 
         private void OnDisable()
@@ -31,11 +35,17 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnFruitSliced -= HandleFruitSliced;
             GameEvents.OnFruitMissed -= HandleFruitMissed;
             GameEvents.OnBombHit -= HandleBombHit;
+            GameEvents.OnCoinCollected -= HandleCoinCollected;
         }
 
         public ScoreSnapshot GetSnapshot()
         {
-            return new ScoreSnapshot(Score, ComboCount, MaxCombo, Multiplier, HighScore);
+            if (_coinManager == null)
+                _coinManager = GetComponent<CoinManager>();
+
+            int coinCount = _coinManager != null ? _coinManager.CurrentCoins : 0;
+            int coinBonusPoints = _coinManager != null ? coinCount * _coinManager.BonusPointsPerCoin : 0;
+            return new ScoreSnapshot(Score, ComboCount, MaxCombo, Multiplier, HighScore, coinCount, coinBonusPoints);
         }
 
         private void HandleRunStarted()
@@ -59,16 +69,21 @@ namespace BladeFrenzy.Gameplay.Core
 
             GameEvents.RaiseScoreChanged(Score, awardedPoints, ComboCount, Multiplier, eventArgs.WorldPosition);
 
-            if (Score > HighScore)
-            {
-                HighScore = Score;
-                PlayerPrefs.SetInt(HighScoreKey, HighScore);
-                PlayerPrefs.Save();
-                GameEvents.RaiseHighScoreBeaten(HighScore);
-            }
+            UpdateHighScore();
 
             if (previousMultiplier != Multiplier)
                 GameEvents.RaiseComboTierChanged(ComboCount, Multiplier);
+        }
+
+        private void HandleCoinCollected(CoinCollectedEventArgs eventArgs)
+        {
+            int awardedPoints = Mathf.Max(0, eventArgs.BonusPoints);
+            if (awardedPoints <= 0)
+                return;
+
+            Score += awardedPoints;
+            GameEvents.RaiseScoreChanged(Score, awardedPoints, ComboCount, Multiplier, eventArgs.WorldPosition);
+            UpdateHighScore();
         }
 
         private void HandleFruitMissed(FruitMissedEventArgs _)
@@ -101,6 +116,17 @@ namespace BladeFrenzy.Gameplay.Core
                 Multiplier = 2;
             else
                 Multiplier = 1;
+        }
+
+        private void UpdateHighScore()
+        {
+            if (Score <= HighScore)
+                return;
+
+            HighScore = Score;
+            PlayerPrefs.SetInt(HighScoreKey, HighScore);
+            PlayerPrefs.Save();
+            GameEvents.RaiseHighScoreBeaten(HighScore);
         }
     }
 }

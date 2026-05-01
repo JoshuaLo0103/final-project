@@ -17,6 +17,7 @@ namespace BladeFrenzy.Gameplay.Core
         public static event Action<HighScoreBeatenEventArgs> OnHighScoreBeaten;
         public static event Action<LivesChangedEventArgs> OnLivesChanged;
         public static event Action OnLivesDepleted;
+        public static event Action<CoinCollectedEventArgs> OnCoinCollected;
 
         public static void RaiseRunStarted()
         {
@@ -77,6 +78,11 @@ namespace BladeFrenzy.Gameplay.Core
         public static void RaiseLivesDepleted()
         {
             OnLivesDepleted?.Invoke();
+        }
+
+        public static void RaiseCoinCollected(int totalCoins, int bonusPoints, Vector3 worldPosition)
+        {
+            OnCoinCollected?.Invoke(new CoinCollectedEventArgs(totalCoins, bonusPoints, worldPosition));
         }
     }
 
@@ -180,6 +186,20 @@ namespace BladeFrenzy.Gameplay.Core
         public int MaxLives { get; }
     }
 
+    public readonly struct CoinCollectedEventArgs
+    {
+        public CoinCollectedEventArgs(int totalCoins, int bonusPoints, Vector3 worldPosition)
+        {
+            TotalCoins = totalCoins;
+            BonusPoints = bonusPoints;
+            WorldPosition = worldPosition;
+        }
+
+        public int TotalCoins { get; }
+        public int BonusPoints { get; }
+        public Vector3 WorldPosition { get; }
+    }
+
     public readonly struct GameRunEndedEventArgs
     {
         public GameRunEndedEventArgs(ScoreSnapshot snapshot, string endReason)
@@ -194,13 +214,15 @@ namespace BladeFrenzy.Gameplay.Core
 
     public readonly struct ScoreSnapshot
     {
-        public ScoreSnapshot(int score, int comboCount, int maxCombo, int multiplier, int highScore)
+        public ScoreSnapshot(int score, int comboCount, int maxCombo, int multiplier, int highScore, int coinCount, int coinBonusPoints)
         {
             Score = score;
             ComboCount = comboCount;
             MaxCombo = maxCombo;
             Multiplier = multiplier;
             HighScore = highScore;
+            CoinCount = coinCount;
+            CoinBonusPoints = coinBonusPoints;
         }
 
         public int Score { get; }
@@ -208,5 +230,7 @@ namespace BladeFrenzy.Gameplay.Core
         public int MaxCombo { get; }
         public int Multiplier { get; }
         public int HighScore { get; }
+        public int CoinCount { get; }
+        public int CoinBonusPoints { get; }
     }
 }

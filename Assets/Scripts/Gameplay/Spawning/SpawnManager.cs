@@ -15,6 +15,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         [SerializeField] private SpawnedObject[] fruitPrefabs;
         [SerializeField] private SpawnedObject bombPrefab;
         [SerializeField] private SpawnedObject healingFruitPrefab;
+        [SerializeField] private CollectibleCoin collectibleCoinPrefab;
         [SerializeField] private SpawnPointFlashFeedback spawnPointFlashFeedback;
 
         [Header("Timing")]
@@ -37,10 +38,17 @@ namespace BladeFrenzy.Gameplay.Spawning
         [Header("Distribution")]
         [SerializeField, Range(0f, 1f)] private float bombChance = 0.15f;
         [SerializeField, Range(0f, 1f)] private float healingFruitChance = 0.08f;
+        [SerializeField, Range(0f, 1f)] private float coinSpawnChance = 0.18f;
+        [SerializeField] private float coinFirstSpawnDelay = 5f;
+        [SerializeField] private Vector2 coinGuaranteedIntervalRange = new(7f, 10f);
+        [SerializeField] private float coinLaunchSpeedMultiplier = 0.62f;
+        [SerializeField] private float coinUpwardBoostMultiplier = 1.15f;
+        [SerializeField] private Vector2 coinSideOffsetRange = new(-0.18f, 0.18f);
 
         private readonly Dictionary<SpawnedObject, Queue<SpawnedObject>> _pools = new();
         private Coroutine _spawnLoop;
         private float _runStartTime;
+        private float _nextGuaranteedCoinTime;
         private float _baseLaunchSpeed;
         private SwordHitScorer _cachedSword;
 
@@ -49,6 +57,8 @@ namespace BladeFrenzy.Gameplay.Spawning
             _baseLaunchSpeed = launchSpeed;
             if (healingFruitPrefab == null)
                 healingFruitPrefab = Resources.Load<SpawnedObject>("HealingAvocadoFruit");
+            if (collectibleCoinPrefab == null)
+                collectibleCoinPrefab = Resources.Load<CollectibleCoin>("CollectibleGoldCoin");
 
             if (spawnPointFlashFeedback == null)
                 spawnPointFlashFeedback = GetComponent<SpawnPointFlashFeedback>();
@@ -69,6 +79,7 @@ namespace BladeFrenzy.Gameplay.Spawning
         {
             StopRun();
             _runStartTime = Time.time;
+            ScheduleNextGuaranteedCoin(coinFirstSpawnDelay);
             spawnPointFlashFeedback?.EnsureMarkersFor(spawnPoints);
             _spawnLoop = StartCoroutine(SpawnLoop());
         }
@@ -100,6 +111,15 @@ namespace BladeFrenzy.Gameplay.Spawning
             {
                 if (slicedPiece != null)
                     Destroy(slicedPiece.gameObject);
+            }
+
+            CollectibleCoin[] coins = FindObjectsByType<CollectibleCoin>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            foreach (CollectibleCoin coin in coins)
+            {
+                if (coin != null)
+                    Destroy(coin.gameObject);
             }
         }
 
@@ -203,6 +223,50 @@ namespace BladeFrenzy.Gameplay.Spawning
                 Random.rotation,
                 velocity,
                 angularVelocity);
+
+            bool guaranteedCoinReady = Time.time >= _nextGuaranteedCoinTime;
+            bool shouldSpawnCoin = !spawnBomb
+                && collectibleCoinPrefab != null
+                && (guaranteedCoinReady || Random.value < coinSpawnChance);
+
+            if (shouldSpawnCoin)
+            {
+                SpawnCollectibleCoin(spawnPosition, target);
+                if (guaranteedCoinReady)
+                    ScheduleNextGuaranteedCoin();
+            }
+        }
+
+        private void ScheduleNextGuaranteedCoin(float delayOverride = -1f)
+        {
+            float delay = delayOverride >= 0f
+                ? delayOverride
+                : Random.Range(
+                    Mathf.Min(coinGuaranteedIntervalRange.x, coinGuaranteedIntervalRange.y),
+                    Mathf.Max(coinGuaranteedIntervalRange.x, coinGuaranteedIntervalRange.y));
+            _nextGuaranteedCoinTime = Time.time + Mathf.Max(0.1f, delay);
+        }
+
+        private void SpawnCollectibleCoin(Vector3 spawnPosition, Vector3 target)
+        {
+            Transform viewer = Camera.main != null ? Camera.main.transform : targetPoint;
+            Vector3 right = viewer != null
+                ? Vector3.ProjectOnPlane(viewer.right, Vector3.up).normalized
+                : Vector3.right;
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.right;
+
+            Vector3 coinSpawnPosition = spawnPosition + right * Random.Range(coinSideOffsetRange.x, coinSideOffsetRange.y);
+            Vector3 launchDirection = (target - coinSpawnPosition).normalized;
+            if (launchDirection.sqrMagnitude < 0.001f)
+                launchDirection = Vector3.up;
+
+            Vector3 velocity = launchDirection * launchSpeed * Mathf.Max(0.05f, coinLaunchSpeedMultiplier)
+                + Vector3.up * upwardBoost * Mathf.Max(0f, coinUpwardBoostMultiplier);
+            Vector3 angularVelocity = Random.insideUnitSphere * torqueStrength;
+
+            CollectibleCoin coin = Instantiate(collectibleCoinPrefab, transform);
+            coin.Launch(coinSpawnPosition, Random.rotation, velocity, angularVelocity);
         }
 
         private Vector3 ResolveSpawnPosition(Transform spawnPoint, Vector3 target)
