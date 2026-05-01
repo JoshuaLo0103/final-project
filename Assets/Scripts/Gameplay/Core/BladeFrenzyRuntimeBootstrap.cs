@@ -10,6 +10,7 @@ namespace BladeFrenzy.Gameplay.Core
         {
             GameObject runtimeRoot = ResolveRuntimeRoot();
             EnsureComponent<LivesManager>(runtimeRoot);
+            EnsureComponent<CoinManager>(runtimeRoot);
             EnsureComponent<ScoreManager>(runtimeRoot);
             EnsureComponent<DifficultyManager>(runtimeRoot);
             EnsureComponent<GameManager>(runtimeRoot);

@@ -19,10 +19,12 @@ namespace BladeFrenzy.Gameplay.Core
         [SerializeField] private TMP_Text multiplierText;
         [SerializeField] private TMP_Text highScoreText;
         [SerializeField] private TMP_Text livesText;
+        [SerializeField] private TMP_Text coinText;
         [SerializeField] private TMP_Text timerText;
         [SerializeField] private TMP_Text difficultyText;
         [SerializeField] private GameObject gameOverPanel;
         [SerializeField] private TMP_Text finalScoreText;
+        [SerializeField] private TMP_Text finalCoinText;
         [SerializeField] private TMP_Text finalComboText;
         [SerializeField] private TMP_Text finalHighScoreText;
         [SerializeField] private TMP_Text statusText;
@@ -99,6 +101,7 @@ namespace BladeFrenzy.Gameplay.Core
         private ScoreManager _scoreManager;
         private DifficultyManager _difficultyManager;
         private LivesManager _livesManager;
+        private CoinManager _coinManager;
 
         private Transform _viewer;
         private float _statusMessageTimer;
@@ -140,13 +143,17 @@ namespace BladeFrenzy.Gameplay.Core
             _scoreManager = GetComponent<ScoreManager>();
             _difficultyManager = GetComponent<DifficultyManager>();
             _livesManager = GetComponent<LivesManager>();
+            _coinManager = GetComponent<CoinManager>();
 
             ApplySerializedReferences();
 
             if (scoreboardCanvas == null && buildRuntimeHudIfMissing)
                 BuildRuntimeHud();
             else
+            {
                 EnsureLivesDisplay();
+                EnsureCoinDisplay();
+            }
 
             EnsureWorldSpaceUiInput();
             EnsureFeedbackElements();
@@ -170,6 +177,7 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnHighScoreBeaten += HandleHighScoreBeaten;
             GameEvents.OnFruitMissed += HandleFruitMissed;
             GameEvents.OnLivesChanged += HandleLivesChanged;
+            GameEvents.OnCoinCollected += HandleCoinCollected;
         }
 
         private void OnDisable()
@@ -182,6 +190,7 @@ namespace BladeFrenzy.Gameplay.Core
             GameEvents.OnHighScoreBeaten -= HandleHighScoreBeaten;
             GameEvents.OnFruitMissed -= HandleFruitMissed;
             GameEvents.OnLivesChanged -= HandleLivesChanged;
+            GameEvents.OnCoinCollected -= HandleCoinCollected;
 
             StopFeedbackAnimations();
         }
@@ -255,7 +264,7 @@ namespace BladeFrenzy.Gameplay.Core
             scoreboardCanvas.transform.localScale = canvasScale;
 
             RectTransform canvasRect = canvasObject.GetComponent<RectTransform>();
-            canvasRect.sizeDelta = new Vector2(920f, 540f);
+            canvasRect.sizeDelta = new Vector2(920f, 620f);
 
             Image panel = CreatePanel("Panel", canvasObject.transform, new Color(0.03f, 0.05f, 0.08f, 0.78f));
             RectTransform panelRect = (RectTransform)panel.transform;
@@ -288,6 +297,20 @@ namespace BladeFrenzy.Gameplay.Core
                 new Vector2(820f, 64f),
                 out livesText,
                 new Color(1f, 0.45f, 0.45f));
+
+            CreateText(
+                "CoinText",
+                panel.transform,
+                string.Empty,
+                36,
+                FontStyles.Bold,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -438f),
+                new Vector2(820f, 48f),
+                out coinText,
+                new Color(1f, 0.82f, 0.2f));
 
             BuildGameOverPanel(panel.transform);
             ApplySerializedReferences();
@@ -323,6 +346,42 @@ namespace BladeFrenzy.Gameplay.Core
                 new Color(1f, 0.45f, 0.45f));
         }
 
+        private void EnsureCoinDisplay()
+        {
+            if (coinText != null || scoreboardCanvas == null)
+                return;
+
+            Transform panel = scoreboardCanvas.transform.Find("Panel");
+            if (panel == null)
+                panel = scoreboardCanvas.transform;
+
+            Transform existing = panel.Find("CoinText");
+            if (existing != null)
+            {
+                coinText = existing.GetComponent<TMP_Text>();
+                if (coinText != null)
+                    return;
+            }
+
+            RectTransform canvasRect = scoreboardCanvas.GetComponent<RectTransform>();
+            if (canvasRect != null && canvasRect.sizeDelta.y < 620f)
+                canvasRect.sizeDelta = new Vector2(canvasRect.sizeDelta.x, 620f);
+
+            CreateText(
+                "CoinText",
+                panel,
+                string.Empty,
+                36,
+                FontStyles.Bold,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -438f),
+                new Vector2(820f, 48f),
+                out coinText,
+                new Color(1f, 0.82f, 0.2f));
+        }
+
         private void BuildGameOverPanel(Transform parent)
         {
             gameOverPanel = new GameObject("GameOverPanel", typeof(RectTransform), typeof(Image));
@@ -338,12 +397,13 @@ namespace BladeFrenzy.Gameplay.Core
             panelImage.color = new Color(0.11f, 0.04f, 0.04f, 0.92f);
 
             CreateText("GameOverTitle", gameOverPanel.transform, "RUN OVER", 38, FontStyles.Bold, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -30f), new Vector2(560f, 48f), out _);
-            CreateText("FinalScoreText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -86f), new Vector2(540f, 34f), out finalScoreText);
-            CreateText("FinalComboText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -122f), new Vector2(540f, 34f), out finalComboText);
-            CreateText("FinalHighScoreText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -158f), new Vector2(540f, 34f), out finalHighScoreText);
+            CreateText("FinalScoreText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -80f), new Vector2(540f, 34f), out finalScoreText);
+            CreateText("FinalCoinText", gameOverPanel.transform, string.Empty, 24, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -114f), new Vector2(540f, 32f), out finalCoinText, new Color(1f, 0.82f, 0.2f));
+            CreateText("FinalComboText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -148f), new Vector2(540f, 34f), out finalComboText);
+            CreateText("FinalHighScoreText", gameOverPanel.transform, string.Empty, 26, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -184f), new Vector2(540f, 34f), out finalHighScoreText);
 
-            CreateButton("RestartButton", gameOverPanel.transform, "Restart", new Vector2(-110f, -218f), () => _gameManager?.RestartRun());
-            CreateButton("QuitButton", gameOverPanel.transform, "Quit", new Vector2(110f, -218f), () => _gameManager?.QuitGame());
+            CreateButton("RestartButton", gameOverPanel.transform, "Restart", new Vector2(-110f, -248f), () => _gameManager?.RestartRun());
+            CreateButton("QuitButton", gameOverPanel.transform, "Quit", new Vector2(110f, -248f), () => _gameManager?.QuitGame());
         }
 
         private void RefreshHud()
@@ -361,6 +421,12 @@ namespace BladeFrenzy.Gameplay.Core
                 highScoreText.text = _scoreManager.HighScore.ToString();
             if (livesText != null && _livesManager != null)
                 livesText.text = $"Lives  {BuildLivesString(_livesManager.CurrentLives, _livesManager.MaxLives)}";
+            if (coinText != null)
+            {
+                if (_coinManager == null)
+                    _coinManager = GetComponent<CoinManager>();
+                coinText.text = $"Coins  {(_coinManager != null ? _coinManager.CurrentCoins : 0)}";
+            }
             if (timerText != null)
                 timerText.text = Mathf.CeilToInt(_gameManager.RemainingTime).ToString();
             if (difficultyText != null)
@@ -389,6 +455,8 @@ namespace BladeFrenzy.Gameplay.Core
                     gameOverPanel.transform.localScale = _gameOverPanelOriginalScale;
                 if (finalScoreText != null)
                     finalScoreText.text = string.Empty;
+                if (finalCoinText != null)
+                    finalCoinText.text = string.Empty;
                 if (finalComboText != null)
                     finalComboText.text = string.Empty;
                 if (finalHighScoreText != null)
@@ -401,6 +469,8 @@ namespace BladeFrenzy.Gameplay.Core
 
             if (finalScoreText != null)
                 finalScoreText.text = "Final Score: 0";
+            if (finalCoinText != null)
+                finalCoinText.text = "Coins: 0 (+0)";
             if (finalComboText != null)
                 finalComboText.text = "Max Combo: 0";
             if (finalHighScoreText != null)
@@ -440,6 +510,30 @@ namespace BladeFrenzy.Gameplay.Core
                     finalComboText = existing.GetComponent<TMP_Text>();
             }
 
+            if (finalCoinText == null)
+            {
+                Transform existing = panelTransform.Find("FinalCoinText");
+                if (existing != null)
+                    finalCoinText = existing.GetComponent<TMP_Text>();
+            }
+
+            if (finalCoinText == null)
+            {
+                CreateText(
+                    "FinalCoinText",
+                    panelTransform,
+                    string.Empty,
+                    24,
+                    FontStyles.Normal,
+                    TextAlignmentOptions.Center,
+                    new Vector2(0.5f, 1f),
+                    new Vector2(0.5f, 1f),
+                    new Vector2(0f, -114f),
+                    new Vector2(540f, 32f),
+                    out finalCoinText,
+                    new Color(1f, 0.82f, 0.2f));
+            }
+
             if (finalHighScoreText == null)
             {
                 Transform existing = panelTransform.Find("FinalHighScoreText");
@@ -464,7 +558,7 @@ namespace BladeFrenzy.Gameplay.Core
             }
 
             RectTransform panelRect = (RectTransform)panelTransform;
-            const float requiredHeight = 280f;
+            const float requiredHeight = 330f;
             if (panelRect.sizeDelta.y < requiredHeight)
             {
                 Vector2 size = panelRect.sizeDelta;
@@ -472,11 +566,12 @@ namespace BladeFrenzy.Gameplay.Core
                 panelRect.sizeDelta = size;
             }
 
-            SetTopAnchoredY(finalScoreText, -86f);
-            SetTopAnchoredY(finalComboText, -122f);
-            SetTopAnchoredY(finalHighScoreText, -158f);
-            SetTopAnchoredY(panelTransform.Find("RestartButton") as RectTransform, -218f);
-            SetTopAnchoredY(panelTransform.Find("QuitButton") as RectTransform, -218f);
+            SetTopAnchoredY(finalScoreText, -80f);
+            SetTopAnchoredY(finalCoinText, -114f);
+            SetTopAnchoredY(finalComboText, -148f);
+            SetTopAnchoredY(finalHighScoreText, -184f);
+            SetTopAnchoredY(panelTransform.Find("RestartButton") as RectTransform, -248f);
+            SetTopAnchoredY(panelTransform.Find("QuitButton") as RectTransform, -248f);
         }
 
         private static void SetTopAnchoredY(TMP_Text text, float y)
@@ -521,6 +616,20 @@ namespace BladeFrenzy.Gameplay.Core
                     finalScoreText,
                     snapshot.Score,
                     value => finalScoreText.text = $"Final Score: {value}");
+
+            if (gameOverStatStaggerDelay > 0f)
+                yield return new WaitForSeconds(gameOverStatStaggerDelay);
+
+            if (finalCoinText != null)
+            {
+                int bonusPerCoin = snapshot.CoinCount > 0
+                    ? Mathf.RoundToInt(snapshot.CoinBonusPoints / (float)snapshot.CoinCount)
+                    : 0;
+                yield return CountUpStat(
+                    finalCoinText,
+                    snapshot.CoinCount,
+                    value => finalCoinText.text = $"Coins: {value} (+{value * bonusPerCoin})");
+            }
 
             if (gameOverStatStaggerDelay > 0f)
                 yield return new WaitForSeconds(gameOverStatStaggerDelay);
@@ -632,6 +741,14 @@ namespace BladeFrenzy.Gameplay.Core
 
             if (eventArgs.PointsAdded > 0)
                 PlayScorePunch();
+        }
+
+        private void HandleCoinCollected(CoinCollectedEventArgs eventArgs)
+        {
+            if (coinText != null)
+                coinText.text = $"Coins  {eventArgs.TotalCoins}";
+
+            SetStatus($"+{eventArgs.BonusPoints} coin bonus", 1.1f);
         }
 
         private void HandleComboTierChanged(ComboTierChangedEventArgs eventArgs)
@@ -1000,6 +1117,7 @@ namespace BladeFrenzy.Gameplay.Core
             particleObject.transform.localScale = Vector3.one;
 
             _highScoreParticles = particleObject.AddComponent<ParticleSystem>();
+            _highScoreParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
             var main = _highScoreParticles.main;
             main.loop = false;

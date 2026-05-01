@@ -256,6 +256,8 @@ namespace BladeFrenzy.Gameplay.Spawning
 
         private void ApplyGlow(float tintStrength, float emissionStrength)
         {
+            EnsurePropertyBlock();
+
             foreach (Renderer targetRenderer in _renderers)
             {
                 if (targetRenderer == null)
@@ -281,6 +283,8 @@ namespace BladeFrenzy.Gameplay.Spawning
 
         private void RestoreRendererState()
         {
+            EnsurePropertyBlock();
+
             foreach (Renderer targetRenderer in _renderers)
             {
                 if (targetRenderer == null)
@@ -299,6 +303,11 @@ namespace BladeFrenzy.Gameplay.Spawning
 
                 targetRenderer.SetPropertyBlock(_propertyBlock);
             }
+        }
+
+        private void EnsurePropertyBlock()
+        {
+            _propertyBlock ??= new MaterialPropertyBlock();
         }
     }
 }
